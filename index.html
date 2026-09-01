@@ -443,7 +443,7 @@
         renderQuestion(currentQuestion);
       } catch (err) {
         console.error("解析失敗詳情：", err);
-        alert(`如果持續出現 429 錯誤，建議稍微休息 1 分鐘後再試！`);
+        alert(`AI 努力生成題目中，建議休息 1 分鐘後再繼續練習！`);
       } finally {
         loadingEl.style.display = 'none';
       }
