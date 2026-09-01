@@ -176,7 +176,6 @@
     let currentQuestion = null;
     let isAnswered = false;
 
-    // 預先載入系統語音庫
     let systemVoices = [];
     function loadVoices() {
       systemVoices = window.speechSynthesis.getVoices();
@@ -221,13 +220,10 @@
         }
 
         let rawJsonStr = data.candidates[0].content.parts[0].text;
-
-        // 清理可能出現的 markdown json 標籤
         rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
 
         currentQuestion = JSON.parse(rawJsonStr);
 
-        // 如果是 p1 且沒有圖片，補上預設圖片
         if (currentQuestion.part === 'p1' && !currentQuestion.imageUrl) {
           currentQuestion.imageUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80";
         }
@@ -245,7 +241,6 @@
       document.getElementById('part-badge').innerText = q.partName;
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
 
-      // Part 1 照片控制
       const qImg = document.getElementById('question-img');
       if (q.imageUrl && q.part === 'p1') {
         qImg.src = q.imageUrl;
@@ -254,7 +249,6 @@
         qImg.style.display = 'none';
       }
 
-      // 閱讀文章控制
       const passageBox = document.getElementById('passage-box');
       if (q.passage) {
         passageBox.style.display = 'block';
@@ -263,7 +257,6 @@
         passageBox.style.display = 'none';
       }
 
-      // 聽力按鈕控制
       const audioBtn = document.getElementById('audio-btn');
       audioBtn.style.display = (q.section === 'listening') ? 'block' : 'none';
 
@@ -280,7 +273,7 @@
       });
     }
 
-    // 🎧 智能朗讀：自動去除冒號前角色名稱、括號 (A)/(Woman) 等，並切換男女聲
+    // 🎧 升級版語音朗讀：加強過濾所有 Man / Woman / Speaker 等標籤
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
@@ -299,18 +292,20 @@
 
         const originalLine = lines[currentLineIndex++];
 
-        // 1. 判斷是否為男性聲音
-        const isMan = /(^|\(|\s)(man|male|speaker 1|m)(:|\s|\))/i.test(originalLine);
+        // 判斷是否為男性發言
+        const isMan = /(^|\b)(man|male|speaker\s*1|m)(\b|:)/i.test(originalLine);
 
-        // 2. 清理過濾：去除 "Man:"、"(A)"、"(Woman)" 等無關朗讀的標籤
+        // 強力過濾：移除開頭的 Man:、Woman:、Speaker 1: 以及各類括號標籤
         let cleanText = originalLine
-          .replace(/^[^:：]+[:：]\s*/, '')   // 移除 "Man:" 或 "Woman:"
-          .replace(/\([^)]*\)/g, '')         // 移除圓括號內容如 "(A)"
-          .replace(/\[[^\]]*\]/g, '')       // 移除方括號內容
+          .replace(/^(man|woman|speaker\s*\d+|m|w)[\s.:-]*/i, '') // 移除開頭角色
+          .replace(/^[^:：]+[:：]\s*/, '')                        // 移除任何冒號前的名稱
+          .replace(/\b(man|woman|speaker\s*\d+)\b/gi, '')        // 移除句子中夾雜的角色字眼
+          .replace(/\([^)]*\)/g, '')                              // 移除圓括號
+          .replace(/\[[^\]]*\]/g, '')                             // 移除方括號
           .trim();
 
         if (!cleanText) {
-          speakNextLine(); // 如果該行清理後沒有可朗讀內容，跳過
+          speakNextLine(); 
           return;
         }
 
@@ -333,7 +328,6 @@
       speakNextLine();
     }
 
-    // 🎨 解析呈現 logic
     function handleAnswer(selectedIndex) {
       if (isAnswered) return;
       isAnswered = true;
@@ -353,7 +347,6 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
-      // 1. 聽力英文原稿卡片 (若有)
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
         transcriptHtml = `
@@ -364,7 +357,6 @@
         `;
       }
 
-      // 2. 完整中文翻譯卡片 (聽力與閱讀通用)
       let translationHtml = '';
       if (currentQuestion.translation) {
         translationHtml = `
@@ -375,7 +367,6 @@
         `;
       }
 
-      // 3. 題目考點與單字格式化
       const formattedExplanation = currentQuestion.explanation
         .replace(/\n/g, '<br>')
         .replace(/(考點說明|題目解析|關鍵字彙|重點單字|選項解析|【[^】]+】)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
