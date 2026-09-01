@@ -58,16 +58,62 @@
     .part1-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 16px; }
     .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; white-space: pre-line; }
     
-    .btn-audio { width: 100%; background-color: var(--primary-listening); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 14px; }
+    .btn-audio { width: 100%; background-color: var(--primary-listening); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 14px; transition: background 0.2s; }
+    .btn-audio:hover { opacity: 0.9; }
+
     .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.5; }
 
     .options-list { display: flex; flex-direction: column; gap: 10px; }
-    .opt-btn { padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; text-align: left; font-size: 14px; cursor: pointer; }
+    .opt-btn { padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; text-align: left; font-size: 14px; cursor: pointer; transition: all 0.2s; }
     .opt-btn.correct { background: #D1FAE5 !important; border-color: #10B981 !important; color: #065F46; font-weight: bold; }
     .opt-btn.incorrect { background: #FEE2E2 !important; border-color: #EF4444 !important; color: #991B1B; }
 
-    .analysis-box { margin-top: 14px; padding: 12px; background: #F3F4F6; border-radius: 8px; display: none; font-size: 13px; line-height: 1.6; }
-    .transcript-box { background: #EFF6FF; border-left: 3px solid var(--primary-listening); padding: 10px; margin: 8px 0; font-size: 13px; white-space: pre-line; }
+    /* 結構化解析卡片視覺優化 */
+    .analysis-box {
+      margin-top: 16px;
+      padding: 16px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      display: none;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .analysis-status {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #E2E8F0;
+    }
+
+    .transcript-box {
+      background: #EFF6FF;
+      border-left: 4px solid var(--primary-listening);
+      padding: 12px;
+      border-radius: 6px;
+      margin: 12px 0;
+      white-space: pre-line;
+      font-size: 13.5px;
+    }
+
+    .analysis-section {
+      margin-top: 12px;
+      padding: 12px;
+      background: #FFFFFF;
+      border-radius: 8px;
+      border: 1px solid #E5E7EB;
+    }
+
+    .analysis-title {
+      font-weight: bold;
+      color: #1F2937;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
 
     .next-btn { width: 100%; margin-top: 14px; padding: 12px; background: #111827; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
     
@@ -113,12 +159,20 @@
   </div>
 
   <script>
-    // ⚠️ 請務必將下方引號內替換為你 Cloudflare Worker 部署後的完整 URL
-    const WORKER_URL = "https://toeic-ai-quiz.ellen6225.workers.dev";
+    // ⚠️ 請填入你的 Cloudflare Worker 網址
+    const WORKER_URL = "https://toeic-ai-proxy.YOUR-SUBDOMAIN.workers.dev";
 
     let currentSection = 'listening';
     let currentQuestion = null;
     let isAnswered = false;
+
+    // 預先加載瀏覽器語音庫 (TTS)
+    let systemVoices = [];
+    function loadVoices() {
+      systemVoices = window.speechSynthesis.getVoices();
+    }
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
 
     window.onload = () => {
       fetchNewQuestionFromAI();
@@ -152,7 +206,6 @@
 
         const data = await response.json();
 
-        // 若 Worker 或 Google API 回傳錯誤訊息，直接拋出例外
         if (!response.ok || data.error) {
           throw new Error(data.error || "中繼站回應異常");
         }
@@ -163,7 +216,6 @@
         renderQuestion(currentQuestion);
       } catch (err) {
         console.error(err);
-        // 跳出具體錯誤訊息彈窗
         alert(`生成失敗：${err.message}`);
       } finally {
         document.getElementById('loading').style.display = 'none';
@@ -209,16 +261,58 @@
       });
     }
 
+    // 🎧 升級版：男女聲交替與去標籤播放
     function playCurrentAudio() {
       if (!currentQuestion) return;
-      const speechText = currentQuestion.audioScript || currentQuestion.question;
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(speechText);
-      u.lang = 'en-US';
-      u.rate = 0.9;
-      window.speechSynthesis.speak(u);
+
+      const rawScript = currentQuestion.audioScript || currentQuestion.question;
+      
+      // 非對話型直接朗讀
+      if (!rawScript.includes('Man:') && !rawScript.includes('Woman:')) {
+        const u = new SpeechSynthesisUtterance(rawScript);
+        u.lang = 'en-US';
+        u.rate = 0.95;
+        window.speechSynthesis.speak(u);
+        return;
+      }
+
+      const lines = rawScript.split('\n').filter(line => line.trim() !== '');
+      const enVoices = systemVoices.filter(v => v.lang.startsWith('en'));
+      const femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen/i.test(v.name)) || enVoices[0];
+      const maleVoice = enVoices.find(v => /male|david|alex|george|daniel/i.test(v.name)) || enVoices[1] || enVoices[0];
+
+      let currentLineIndex = 0;
+
+      function speakNextLine() {
+        if (currentLineIndex >= lines.length) return;
+
+        const line = lines[currentLineIndex++];
+        const isMan = /^Man:/i.test(line.trim());
+        
+        // 清除開頭的 Man: / Woman: 標籤
+        const cleanText = line.replace(/^(Man|Woman):\s*/i, '');
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.95;
+
+        if (isMan) {
+          if (maleVoice) utterance.voice = maleVoice;
+          utterance.pitch = 0.85; // 男低音
+        } else {
+          if (femaleVoice) utterance.voice = femaleVoice;
+          utterance.pitch = 1.15; // 女高音
+        }
+
+        utterance.onend = speakNextLine;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      speakNextLine();
     }
 
+    // 🎨 升級版：結構化解析介面
     function handleAnswer(selectedIndex) {
       if (isAnswered) return;
       isAnswered = true;
@@ -238,19 +332,33 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
+      // 聽力逐字稿卡片
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
         transcriptHtml = `
           <div class="transcript-box">
-            <strong>📝 聽力音檔逐字稿：</strong><br>${currentQuestion.audioScript}
+            <div style="font-weight:bold; color:#1E40AF; margin-bottom:4px;">📝 聽力音檔逐字稿：</div>
+            ${currentQuestion.audioScript}
           </div>
         `;
       }
 
+      // 自動高亮解析關鍵標題
+      const formattedExplanation = currentQuestion.explanation
+        .replace(/\n/g, '<br>')
+        .replace(/(考點說明|題目解析|關鍵字彙|翻譯|選項解析|【[^】]+】)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
+
       analysisBox.innerHTML = `
-        <strong>${isCorrect ? '✅ 回答正確！' : '❌ 答錯囉！'}</strong>
+        <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
+          ${isCorrect ? '🎉 回答正確！' : '❌ 答錯囉！正確答案是：' + ['(A)', '(B)', '(C)', '(D)'][currentQuestion.answer]}
+        </div>
+        
         ${transcriptHtml}
-        <div>${currentQuestion.explanation}</div>
+
+        <div class="analysis-section">
+          <div class="analysis-title">💡 題目解析與考點：</div>
+          <div>${formattedExplanation}</div>
+        </div>
       `;
 
       document.getElementById('next-btn').style.display = 'block';
