@@ -8,6 +8,7 @@
     :root {
       --primary-listening: #2563EB;
       --primary-reading: #D97706;
+      --primary-profile: #7C3AED;
       --bg-color: #F3F4F6;
       --card-bg: #FFFFFF;
       --text-color: #1F2937;
@@ -41,15 +42,16 @@
 
     h1 { text-align: center; color: #111827; margin-top: 0; font-size: 22px; }
 
-    .section-tabs { display: flex; background-color: #E5E7EB; border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+    .section-tabs { display: flex; background-color: #E5E7EB; border-radius: 12px; padding: 4px; margin-bottom: 16px; gap: 4px; }
     .sec-tab {
-      flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 14px; font-weight: bold;
-      border-radius: 8px; cursor: pointer; color: #4B5563; transition: all 0.2s;
+      flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 13px; font-weight: bold;
+      border-radius: 8px; cursor: pointer; color: #4B5563; transition: all 0.2s; text-align: center;
     }
     .sec-tab.active-listening { background: var(--primary-listening); color: white; }
     .sec-tab.active-reading { background: var(--primary-reading); color: white; }
+    .sec-tab.active-profile { background: var(--primary-profile); color: white; }
 
-    .quiz-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; position: relative; min-height: 300px; }
+    .quiz-card, .profile-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; position: relative; min-height: 300px; }
     .part-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .badge { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; }
     .badge-l { background-color: #DBEAFE; color: #1E40AF; }
@@ -165,6 +167,19 @@
       display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; font-weight: bold; color: #4B5563;
       z-index: 10;
     }
+
+    /* 個人紀錄頁面樣式 */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; text-align: center; }
+    .stat-value { font-size: 20px; font-weight: bold; color: var(--primary-profile); margin-top: 4px; }
+    .stat-label { font-size: 12px; color: #64748B; }
+
+    .wrong-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; }
+    .wrong-item { background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .wrong-info { font-size: 13px; font-weight: 500; color: #991B1B; flex: 1; margin-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+    .btn-remove { background: #EF4444; color: white; }
+    .btn-review { background: #2563EB; color: white; }
   </style>
 </head>
 <body>
@@ -175,8 +190,10 @@
     <div class="section-tabs">
       <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力題型</button>
       <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀題型</button>
+      <button class="sec-tab" onclick="selectSection('profile')">📊 個人紀錄</button>
     </div>
 
+    <!-- 刷題卡片 -->
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
         <div>⚡ AI 生成題目中，請耐心等候...</div>
@@ -207,6 +224,36 @@
       <div class="analysis-box" id="analysis-box"></div>
       <button class="next-btn" id="next-btn" onclick="fetchNewQuestionFromAI()">下一題👉</button>
     </div>
+
+    <!-- 個人紀錄與錯題本卡片 -->
+    <div class="profile-card" id="profile-card" style="display: none;">
+      <h3 style="margin-top: 0; color: #1E293B; font-size: 18px;">📊 我的個人紀錄</h3>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">總練習題數</div>
+          <div class="stat-value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">答對題數</div>
+          <div class="stat-value" id="stat-correct" style="color: #059669;">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">整體正確率</div>
+          <div class="stat-value" id="stat-rate">0%</div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h4 style="margin: 0; color: #1E293B;">📚 我的錯題本 (<span id="wrong-count">0</span>)</h4>
+        <button onclick="clearWrongBook()" class="btn-sm" style="background: #E5E7EB; color: #374151;">清空錯題本</button>
+      </div>
+
+      <div class="wrong-list" id="wrong-list-container">
+        <div style="text-align: center; color: #94A3B8; padding: 30px; font-size: 13.5px;">目前沒有錯題紀錄，繼續保持！ 🎉</div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -215,6 +262,10 @@
     let currentSection = 'listening';
     let currentQuestion = null;
     let isAnswered = false;
+
+    // 本地紀錄資料結構
+    let userStats = JSON.parse(localStorage.getItem('toeic_stats')) || { total: 0, correct: 0 };
+    let wrongBook = JSON.parse(localStorage.getItem('toeic_wrong_book')) || [];
 
     let systemVoices = [];
     function loadVoices() {
@@ -231,10 +282,96 @@
       currentSection = sec;
       const tabs = document.querySelectorAll('.sec-tab');
       tabs.forEach(tab => tab.className = 'sec-tab');
-      if (sec === 'listening') tabs[0].classList.add('active-listening');
+
+      const quizCard = document.getElementById('quiz-card');
+      const profileCard = document.getElementById('profile-card');
+
+      if (sec === 'listening') {
+        tabs[0].classList.add('active-listening');
+        quizCard.style.display = 'block';
+        profileCard.style.display = 'none';
+        fetchNewQuestionFromAI();
+      } else if (sec === 'reading') {
+        tabs[1].classList.add('active-reading');
+        quizCard.style.display = 'block';
+        profileCard.style.display = 'none';
+        fetchNewQuestionFromAI();
+      } else if (sec === 'profile') {
+        tabs[2].classList.add('active-profile');
+        quizCard.style.display = 'none';
+        profileCard.style.display = 'block';
+        renderProfile();
+      }
+    }
+
+    function updateStats(isCorrect) {
+      userStats.total++;
+      if (isCorrect) userStats.correct++;
+      localStorage.setItem('toeic_stats', JSON.stringify(userStats));
+    }
+
+    function saveWrongQuestion(q) {
+      // 避免重複加入同一題
+      if (!wrongBook.some(item => item.question === q.question)) {
+        wrongBook.unshift(q); // 放至最前
+        localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
+      }
+    }
+
+    function renderProfile() {
+      document.getElementById('stat-total').innerText = userStats.total;
+      document.getElementById('stat-correct').innerText = userStats.correct;
+      const rate = userStats.total > 0 ? Math.round((userStats.correct / userStats.total) * 100) : 0;
+      document.getElementById('stat-rate').innerText = rate + '%';
+      
+      document.getElementById('wrong-count').innerText = wrongBook.length;
+
+      const container = document.getElementById('wrong-list-container');
+      if (wrongBook.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: #94A3B8; padding: 30px; font-size: 13.5px;">目前沒有錯題紀錄，繼續保持！ 🎉</div>`;
+        return;
+      }
+
+      container.innerHTML = wrongBook.map((q, index) => `
+        <div class="wrong-item">
+          <div class="wrong-info"><strong>[${q.partName}]</strong> ${q.question}</div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn-sm btn-review" onclick="reviewWrongQuestion(${index})">複習</button>
+            <button class="btn-sm btn-remove" onclick="removeWrongQuestion(${index})">刪除</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function reviewWrongQuestion(index) {
+      const q = wrongBook[index];
+      currentSection = q.section || 'listening';
+      currentQuestion = q;
+      
+      // 切回刷題介面並渲染該題
+      const tabs = document.querySelectorAll('.sec-tab');
+      tabs.forEach(tab => tab.className = 'sec-tab');
+      if (currentSection === 'listening') tabs[0].classList.add('active-listening');
       else tabs[1].classList.add('active-reading');
 
-      fetchNewQuestionFromAI();
+      document.getElementById('quiz-card').style.display = 'block';
+      document.getElementById('profile-card').style.display = 'none';
+
+      renderQuestion(q);
+    }
+
+    function removeWrongQuestion(index) {
+      wrongBook.splice(index, 1);
+      localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
+      renderProfile();
+    }
+
+    function clearWrongBook() {
+      if (confirm("確定要清空所有錯題紀錄嗎？")) {
+        wrongBook = [];
+        localStorage.removeItem('toeic_wrong_book');
+        renderProfile();
+      }
     }
 
     async function fetchNewQuestionFromAI() {
@@ -273,7 +410,6 @@
     }
 
     function renderQuestion(q) {
-      // 換新題目時自動捲動回頁面最上方
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       document.getElementById('part-badge').innerText = q.partName;
@@ -370,8 +506,14 @@
       isAnswered = true;
 
       const isCorrect = selectedIndex === currentQuestion.answer;
-      const btns = document.querySelectorAll('.opt-btn');
+      
+      // 更新統計數據
+      updateStats(isCorrect);
+      if (!isCorrect) {
+        saveWrongQuestion(currentQuestion);
+      }
 
+      const btns = document.querySelectorAll('.opt-btn');
       btns.forEach(b => b.disabled = true);
 
       if (isCorrect) {
