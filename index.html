@@ -273,6 +273,9 @@
     }
 
     function renderQuestion(q) {
+      // 換新題目時自動捲動回頁面最上方
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       document.getElementById('part-badge').innerText = q.partName;
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
 
@@ -383,7 +386,6 @@
 
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
-        // 清理逐字稿中的大標題，並將 \n 轉為 <br>
         let cleanScript = currentQuestion.audioScript
           .replace(/【[^】]+】/g, '')
           .trim()
@@ -399,7 +401,6 @@
 
       let translationHtml = '';
       if (currentQuestion.translation) {
-        // 清理翻譯中的大標題，並將 \n 轉為 <br>
         let cleanTrans = currentQuestion.translation
           .replace(/【[^】]+】/g, '')
           .trim()
