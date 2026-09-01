@@ -58,8 +58,25 @@
     .part1-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 16px; }
     .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; white-space: pre-line; }
     
-    .btn-audio { width: 100%; background-color: var(--primary-listening); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 14px; transition: opacity 0.2s; }
+    .audio-control-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .btn-audio { flex: 3; background-color: var(--primary-listening); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: opacity 0.2s; }
     .btn-audio:hover { opacity: 0.9; }
+
+    .speed-select {
+      flex: 1;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid #CBD5E1;
+      background: white;
+      font-size: 13px;
+      font-weight: bold;
+      color: #1E293B;
+      cursor: pointer;
+    }
 
     .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.5; }
 
@@ -125,6 +142,22 @@
       gap: 6px;
     }
 
+    .vocab-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+      font-size: 13.5px;
+    }
+    .vocab-table th, .vocab-table td {
+      border: 1px solid #E5E7EB;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    .vocab-table th {
+      background-color: #F1F5F9;
+      color: #334155;
+    }
+
     .next-btn { width: 100%; margin-top: 14px; padding: 12px; background: #111827; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
     
     .loading-overlay {
@@ -157,9 +190,18 @@
       <img id="question-img" class="part1-image" src="" alt="Part 1 照片" style="display:none;" />
       <div id="passage-box" class="passage-box" style="display:none;"></div>
 
-      <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()" style="display:none;">
-        🔊 點擊播放聽力語音 (TTS)
-      </button>
+      <!-- 聽力控制列：包含語音播放按鈕與速度下拉選單 -->
+      <div id="audio-control-container" class="audio-control-bar" style="display:none;">
+        <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()">
+          🔊 點擊播放聽力語音 (TTS)
+        </button>
+        <select id="playback-speed" class="speed-select">
+          <option value="0.75">0.75x 慢速</option>
+          <option value="1.0" selected>1.0x 正常</option>
+          <option value="1.25">1.25x 快速</option>
+          <option value="1.5">1.5x 挑戰</option>
+        </select>
+      </div>
 
       <div class="question-title" id="question-text">載入中...</div>
       <div class="options-list" id="options-box"></div>
@@ -223,11 +265,6 @@
         rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
 
         currentQuestion = JSON.parse(rawJsonStr);
-
-        if (currentQuestion.part === 'p1' && !currentQuestion.imageUrl) {
-          currentQuestion.imageUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80";
-        }
-        
         renderQuestion(currentQuestion);
       } catch (err) {
         console.error("解析失敗詳情：", err);
@@ -257,8 +294,8 @@
         passageBox.style.display = 'none';
       }
 
-      const audioBtn = document.getElementById('audio-btn');
-      audioBtn.style.display = (q.section === 'listening') ? 'block' : 'none';
+      const audioContainer = document.getElementById('audio-control-container');
+      audioContainer.style.display = (q.section === 'listening') ? 'flex' : 'none';
 
       document.getElementById('question-text').innerText = q.question;
 
@@ -273,13 +310,16 @@
       });
     }
 
-    // 🎧 升級版語音朗讀：加強過濾所有 Man / Woman / Speaker 等標籤
+    // 🎧 語音朗讀：支援動態速度調整與角色過濾
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
       const rawScript = currentQuestion.audioScript || currentQuestion.question;
       const lines = rawScript.split('\n').filter(line => line.trim() !== '');
+
+      const speedSelect = document.getElementById('playback-speed');
+      const selectedRate = parseFloat(speedSelect.value) || 1.0;
 
       const enVoices = systemVoices.filter(v => v.lang.startsWith('en'));
       const femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen/i.test(v.name)) || enVoices[0];
@@ -291,17 +331,14 @@
         if (currentLineIndex >= lines.length) return;
 
         const originalLine = lines[currentLineIndex++];
+        const isMan = /(^|\b)(man|male|speaker\s*1|m)(\b|[:：])/i.test(originalLine);
 
-        // 判斷是否為男性發言
-        const isMan = /(^|\b)(man|male|speaker\s*1|m)(\b|:)/i.test(originalLine);
-
-        // 強力過濾：移除開頭的 Man:、Woman:、Speaker 1: 以及各類括號標籤
         let cleanText = originalLine
-          .replace(/^(man|woman|speaker\s*\d+|m|w)[\s.:-]*/i, '') // 移除開頭角色
-          .replace(/^[^:：]+[:：]\s*/, '')                        // 移除任何冒號前的名稱
-          .replace(/\b(man|woman|speaker\s*\d+)\b/gi, '')        // 移除句子中夾雜的角色字眼
-          .replace(/\([^)]*\)/g, '')                              // 移除圓括號
-          .replace(/\[[^\]]*\]/g, '')                             // 移除方括號
+          .replace(/^(man|woman|speaker\s*\d+|m|w|speaker\s*[a-z])\s*[:：.-]*/i, '')
+          .replace(/^[^:：]+[:：]\s*/, '')
+          .replace(/\b(man|woman|speaker\s*\d+)\b/gi, '')
+          .replace(/\([^)]*\)/g, '')
+          .replace(/\[[^\]]*\]/g, '')
           .trim();
 
         if (!cleanText) {
@@ -311,7 +348,7 @@
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'en-US';
-        utterance.rate = 0.95;
+        utterance.rate = selectedRate; // 套用使用者選擇的播放速度
 
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
@@ -361,15 +398,38 @@
       if (currentQuestion.translation) {
         translationHtml = `
           <div class="translation-box">
-            <div style="font-weight:bold; color:#92400E; margin-bottom:4px;">🌐 完整中文翻譯：</div>
+            <div style="font-weight:bold; color:#92400E; margin-bottom:4px;">🌐 中文完整逐字翻譯：</div>
             ${currentQuestion.translation}
+          </div>
+        `;
+      }
+
+      let vocabHtml = '';
+      if (currentQuestion.vocabularies && currentQuestion.vocabularies.length > 0) {
+        let rows = currentQuestion.vocabularies.map(v => `
+          <tr>
+            <td><strong>${v.word}</strong></td>
+            <td><em>${v.pos}</em></td>
+            <td>${v.meaning}</td>
+          </tr>
+        `).join('');
+
+        vocabHtml = `
+          <div class="analysis-section">
+            <div class="analysis-title">📚 多益重要單字：</div>
+            <table class="vocab-table">
+              <thead>
+                <tr><th>單字 / 片語</th><th>詞性</th><th>中文意思</th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
           </div>
         `;
       }
 
       const formattedExplanation = currentQuestion.explanation
         .replace(/\n/g, '<br>')
-        .replace(/(考點說明|題目解析|關鍵字彙|重點單字|選項解析|【[^】]+】)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
+        .replace(/(考點說明|題目解析|選項解析|【[^】]+】)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
 
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
@@ -380,9 +440,11 @@
         ${translationHtml}
 
         <div class="analysis-section">
-          <div class="analysis-title">💡 考點解析與單字：</div>
+          <div class="analysis-title">💡 題目與選項解析：</div>
           <div>${formattedExplanation}</div>
         </div>
+
+        ${vocabHtml}
       `;
 
       document.getElementById('next-btn').style.display = 'block';
