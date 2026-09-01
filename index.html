@@ -163,9 +163,9 @@
     .next-btn { width: 100%; margin-top: 14px; padding: 12px; background: #111827; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
     
     .loading-overlay {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9);
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.95);
       display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; font-weight: bold; color: #4B5563;
-      z-index: 10;
+      z-index: 10; text-align: center; padding: 20px;
     }
 
     /* 個人紀錄頁面樣式 */
@@ -196,7 +196,7 @@
     <!-- 刷題卡片 -->
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
-        <div>⚡ AI 生成題目中，請耐心等候...</div>
+        <div id="loading-text">⚡ AI 生成題目中，請耐心等候...</div>
       </div>
 
       <div class="part-header">
@@ -209,7 +209,7 @@
 
       <div id="audio-control-container" class="audio-control-bar" style="display:none;">
         <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()">
-          🔊 點擊播放聽力語音 (TTS)
+          🔊 點擊播放聽力語音
         </button>
         <select id="playback-speed" class="speed-select">
           <option value="0.75">0.75x 慢速</option>
@@ -311,9 +311,8 @@
     }
 
     function saveWrongQuestion(q) {
-      // 避免重複加入同一題
       if (!wrongBook.some(item => item.question === q.question)) {
-        wrongBook.unshift(q); // 放至最前
+        wrongBook.unshift(q);
         localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
       }
     }
@@ -348,7 +347,6 @@
       currentSection = q.section || 'listening';
       currentQuestion = q;
       
-      // 切回刷題介面並渲染該題
       const tabs = document.querySelectorAll('.sec-tab');
       tabs.forEach(tab => tab.className = 'sec-tab');
       if (currentSection === 'listening') tabs[0].classList.add('active-listening');
@@ -374,8 +372,50 @@
       }
     }
 
+    // 輔助函式：延遲指定毫秒
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // 自動重試 Request (含 429 處理)
+    async function fetchWithRetry(url, options, maxRetries = 3) {
+      let delay = 2000; // 首次重試等待 2 秒
+      const loadingText = document.getElementById('loading-text');
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(url, options);
+
+          // 若碰到 429 (Too Many Requests) 或是伺服器錯誤 503
+          if (response.status === 429 || response.status === 503) {
+            if (attempt < maxRetries) {
+              const waitSeconds = Math.ceil(delay / 1000);
+              for (let sec = waitSeconds; sec > 0; sec--) {
+                loadingText.innerText = `⏳ AI 努力生成題目中，${sec} 秒後自動重試... (${attempt + 1}/${maxRetries})`;
+                await sleep(1000);
+              }
+              delay *= 2; // 時間加倍 (2s -> 4s -> 8s)
+              loadingText.innerText = `⚡ 正在努力生成題目中...`;
+              continue;
+            }
+          }
+
+          return response;
+        } catch (err) {
+          if (attempt < maxRetries) {
+            await sleep(delay);
+            delay *= 2;
+            continue;
+          }
+          throw err;
+        }
+      }
+    }
+
     async function fetchNewQuestionFromAI() {
-      document.getElementById('loading').style.display = 'flex';
+      const loadingEl = document.getElementById('loading');
+      const loadingText = document.getElementById('loading-text');
+      loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
+      loadingEl.style.display = 'flex';
+      
       document.getElementById('analysis-box').style.display = 'none';
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
@@ -384,7 +424,7 @@
       const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
       try {
-        const response = await fetch(WORKER_URL, {
+        const response = await fetchWithRetry(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ currentSection, randomPart })
@@ -403,9 +443,9 @@
         renderQuestion(currentQuestion);
       } catch (err) {
         console.error("解析失敗詳情：", err);
-        alert(`生成失敗：${err.message}`);
+        alert(`生成失敗：${err.message}\n如果持續出現 429 錯誤，建議稍微休息 1 分鐘後再試！`);
       } finally {
-        document.getElementById('loading').style.display = 'none';
+        loadingEl.style.display = 'none';
       }
     }
 
@@ -507,7 +547,6 @@
 
       const isCorrect = selectedIndex === currentQuestion.answer;
       
-      // 更新統計數據
       updateStats(isCorrect);
       if (!isCorrect) {
         saveWrongQuestion(currentQuestion);
