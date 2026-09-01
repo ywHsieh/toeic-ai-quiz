@@ -58,7 +58,7 @@
     .part1-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 16px; }
     .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; white-space: pre-line; }
     
-    .btn-audio { width: 100%; background-color: var(--primary-listening); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 14px; transition: background 0.2s; }
+    .btn-audio { width: 100%; background-color: var(--primary-listening); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 14px; transition: opacity 0.2s; }
     .btn-audio:hover { opacity: 0.9; }
 
     .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.5; }
@@ -68,7 +68,7 @@
     .opt-btn.correct { background: #D1FAE5 !important; border-color: #10B981 !important; color: #065F46; font-weight: bold; }
     .opt-btn.incorrect { background: #FEE2E2 !important; border-color: #EF4444 !important; color: #991B1B; }
 
-    /* 結構化解析卡片視覺優化 */
+    /* 結構化解析區塊樣式 */
     .analysis-box {
       margin-top: 16px;
       padding: 16px;
@@ -96,6 +96,17 @@
       margin: 12px 0;
       white-space: pre-line;
       font-size: 13.5px;
+    }
+
+    .translation-box {
+      background: #FEF3C7;
+      border-left: 4px solid var(--primary-reading);
+      padding: 12px;
+      border-radius: 6px;
+      margin: 12px 0;
+      white-space: pre-line;
+      font-size: 13.5px;
+      color: #78350F;
     }
 
     .analysis-section {
@@ -159,7 +170,7 @@
   </div>
 
   <script>
-    // ⚠️ 請填入你的 Cloudflare Worker 網址
+    // ⚠️ 請替換為你部署後的 Cloudflare Worker 完整網址
     const WORKER_URL = "https://toeic-ai-quiz.ellen6225.workers.dev";
 
     let currentSection = 'listening';
@@ -261,14 +272,13 @@
       });
     }
 
-    // 🎧 升級版：男女聲交替與去標籤播放
+    // 🎧 男女對白分聲朗讀 (自動去除 Man: / Woman: 標籤)
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
       const rawScript = currentQuestion.audioScript || currentQuestion.question;
       
-      // 非對話型直接朗讀
       if (!rawScript.includes('Man:') && !rawScript.includes('Woman:')) {
         const u = new SpeechSynthesisUtterance(rawScript);
         u.lang = 'en-US';
@@ -290,7 +300,6 @@
         const line = lines[currentLineIndex++];
         const isMan = /^Man:/i.test(line.trim());
         
-        // 清除開頭的 Man: / Woman: 標籤
         const cleanText = line.replace(/^(Man|Woman):\s*/i, '');
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -299,10 +308,10 @@
 
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
-          utterance.pitch = 0.85; // 男低音
+          utterance.pitch = 0.85;
         } else {
           if (femaleVoice) utterance.voice = femaleVoice;
-          utterance.pitch = 1.15; // 女高音
+          utterance.pitch = 1.15;
         }
 
         utterance.onend = speakNextLine;
@@ -312,7 +321,7 @@
       speakNextLine();
     }
 
-    // 🎨 升級版：結構化解析介面
+    // 🎨 結構化解析與完整中文翻譯渲染
     function handleAnswer(selectedIndex) {
       if (isAnswered) return;
       isAnswered = true;
@@ -332,21 +341,32 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
-      // 聽力逐字稿卡片
+      // 1. 聽力英文原稿卡片 (若有)
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
         transcriptHtml = `
           <div class="transcript-box">
-            <div style="font-weight:bold; color:#1E40AF; margin-bottom:4px;">📝 聽力音檔逐字稿：</div>
+            <div style="font-weight:bold; color:#1E40AF; margin-bottom:4px;">📝 聽力音檔逐字稿 (英文)：</div>
             ${currentQuestion.audioScript}
           </div>
         `;
       }
 
-      // 自動高亮解析關鍵標題
+      // 2. 完整中文翻譯卡片 (聽力與閱讀通用)
+      let translationHtml = '';
+      if (currentQuestion.translation) {
+        translationHtml = `
+          <div class="translation-box">
+            <div style="font-weight:bold; color:#92400E; margin-bottom:4px;">🌐 完整中文翻譯：</div>
+            ${currentQuestion.translation}
+          </div>
+        `;
+      }
+
+      // 3. 題目考點與單字格式化
       const formattedExplanation = currentQuestion.explanation
         .replace(/\n/g, '<br>')
-        .replace(/(考點說明|題目解析|關鍵字彙|翻譯|選項解析|【[^】]+】)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
+        .replace(/(考點說明|題目解析|關鍵字彙|重點單字|選項解析|【[^】]+】)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
 
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
@@ -354,9 +374,10 @@
         </div>
         
         ${transcriptHtml}
+        ${translationHtml}
 
         <div class="analysis-section">
-          <div class="analysis-title">💡 題目解析與考點：</div>
+          <div class="analysis-title">💡 考點解析與單字：</div>
           <div>${formattedExplanation}</div>
         </div>
       `;
