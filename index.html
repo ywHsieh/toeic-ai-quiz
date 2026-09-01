@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TOEIC 多益 AI 動態刷題網</title>
+  <title>A Jun 多益練習</title>
   <style>
     :root {
       --primary-listening: #2563EB;
@@ -56,7 +56,7 @@
     .badge-r { background-color: #FEF3C7; color: #92400E; }
 
     .part1-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 16px; }
-    .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; white-space: pre-line; }
+    .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.6; margin-bottom: 14px; white-space: pre-line; }
     
     .audio-control-bar {
       display: flex;
@@ -78,7 +78,7 @@
       cursor: pointer;
     }
 
-    .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.5; }
+    .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.6; white-space: pre-line; }
 
     .options-list { display: flex; flex-direction: column; gap: 10px; }
     .opt-btn { padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; text-align: left; font-size: 14px; cursor: pointer; transition: all 0.2s; }
@@ -110,7 +110,7 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      white-space: pre-line;
+      line-height: 1.6;
       font-size: 13.5px;
     }
 
@@ -120,7 +120,7 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      white-space: pre-line;
+      line-height: 1.6;
       font-size: 13.5px;
       color: #78350F;
     }
@@ -170,7 +170,7 @@
 <body>
 
   <div class="container">
-    <h1>🤖 多益 AI 自動刷題網</h1>
+    <h1>🤖 A Jun 多益練習</h1>
 
     <div class="section-tabs">
       <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力題型</button>
@@ -179,7 +179,7 @@
 
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
-        <div>⚡ AI 極速生成題目中，請稍候...</div>
+        <div>⚡ AI 生成題目中，請耐心等候...</div>
       </div>
 
       <div class="part-header">
@@ -190,7 +190,6 @@
       <img id="question-img" class="part1-image" src="" alt="Part 1 照片" style="display:none;" />
       <div id="passage-box" class="passage-box" style="display:none;"></div>
 
-      <!-- 聽力控制列：包含語音播放按鈕與速度下拉選單 -->
       <div id="audio-control-container" class="audio-control-bar" style="display:none;">
         <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()">
           🔊 點擊播放聽力語音 (TTS)
@@ -206,12 +205,11 @@
       <div class="question-title" id="question-text">載入中...</div>
       <div class="options-list" id="options-box"></div>
       <div class="analysis-box" id="analysis-box"></div>
-      <button class="next-btn" id="next-btn" onclick="fetchNewQuestionFromAI()">下一題 (AI 生成) 👉</button>
+      <button class="next-btn" id="next-btn" onclick="fetchNewQuestionFromAI()">下一題👉</button>
     </div>
   </div>
 
   <script>
-    // ⚠️ 請替換為你部署後的 Cloudflare Worker 完整網址
     const WORKER_URL = "https://toeic-ai-quiz.ellen6225.workers.dev";
 
     let currentSection = 'listening';
@@ -289,7 +287,7 @@
       const passageBox = document.getElementById('passage-box');
       if (q.passage) {
         passageBox.style.display = 'block';
-        passageBox.innerText = q.passage;
+        passageBox.innerHTML = q.passage.replace(/\n/g, '<br>');
       } else {
         passageBox.style.display = 'none';
       }
@@ -310,7 +308,6 @@
       });
     }
 
-    // 🎧 語音朗讀：支援動態速度調整與角色過濾
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
@@ -348,7 +345,7 @@
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'en-US';
-        utterance.rate = selectedRate; // 套用使用者選擇的播放速度
+        utterance.rate = selectedRate;
 
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
@@ -386,20 +383,32 @@
 
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
+        // 清理逐字稿中的大標題，並將 \n 轉為 <br>
+        let cleanScript = currentQuestion.audioScript
+          .replace(/【[^】]+】/g, '')
+          .trim()
+          .replace(/\n/g, '<br>');
+
         transcriptHtml = `
           <div class="transcript-box">
-            <div style="font-weight:bold; color:#1E40AF; margin-bottom:4px;">📝 聽力音檔逐字稿 (英文)：</div>
-            ${currentQuestion.audioScript}
+            <div style="font-weight:bold; color:#1E40AF; margin-bottom:4px;">📝 聽力音檔逐字稿：</div>
+            ${cleanScript}
           </div>
         `;
       }
 
       let translationHtml = '';
       if (currentQuestion.translation) {
+        // 清理翻譯中的大標題，並將 \n 轉為 <br>
+        let cleanTrans = currentQuestion.translation
+          .replace(/【[^】]+】/g, '')
+          .trim()
+          .replace(/\n/g, '<br>');
+
         translationHtml = `
           <div class="translation-box">
             <div style="font-weight:bold; color:#92400E; margin-bottom:4px;">🌐 中文完整逐字翻譯：</div>
-            ${currentQuestion.translation}
+            ${cleanTrans}
           </div>
         `;
       }
@@ -428,8 +437,10 @@
       }
 
       const formattedExplanation = currentQuestion.explanation
+        .replace(/【[^】]+】/g, '')
+        .trim()
         .replace(/\n/g, '<br>')
-        .replace(/(考點說明|題目解析|選項解析|【[^】]+】)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
+        .replace(/(考點說明|題目解析|選項解析)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
 
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
