@@ -68,7 +68,6 @@
     .opt-btn.correct { background: #D1FAE5 !important; border-color: #10B981 !important; color: #065F46; font-weight: bold; }
     .opt-btn.incorrect { background: #FEE2E2 !important; border-color: #EF4444 !important; color: #991B1B; }
 
-    /* 結構化解析區塊樣式 */
     .analysis-box {
       margin-top: 16px;
       padding: 16px;
@@ -147,7 +146,7 @@
 
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
-        <div>✨ AI 正在生成全新題目中，請稍候...</div>
+        <div>⚡ AI 極速生成題目中，請稍候...</div>
       </div>
 
       <div class="part-header">
@@ -170,14 +169,14 @@
   </div>
 
   <script>
-    // ⚠️ 請替換為你部署後的 Cloudflare Worker 完整網址
+    // ⚠️ 請替換為你部署後的 Cloudflare Worker 網址
     const WORKER_URL = "https://toeic-ai-quiz.ellen6225.workers.dev";
 
     let currentSection = 'listening';
     let currentQuestion = null;
     let isAnswered = false;
 
-    // 預先加載瀏覽器語音庫 (TTS)
+    // 預先載入語音引擎
     let systemVoices = [];
     function loadVoices() {
       systemVoices = window.speechSynthesis.getVoices();
@@ -272,22 +271,14 @@
       });
     }
 
-    // 🎧 男女對白分聲朗讀 (自動去除 Man: / Woman: 標籤)
+    // 🎧 智能朗讀 (自動過濾標籤，切換男女聲)
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
       const rawScript = currentQuestion.audioScript || currentQuestion.question;
-      
-      if (!rawScript.includes('Man:') && !rawScript.includes('Woman:')) {
-        const u = new SpeechSynthesisUtterance(rawScript);
-        u.lang = 'en-US';
-        u.rate = 0.95;
-        window.speechSynthesis.speak(u);
-        return;
-      }
-
       const lines = rawScript.split('\n').filter(line => line.trim() !== '');
+
       const enVoices = systemVoices.filter(v => v.lang.startsWith('en'));
       const femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen/i.test(v.name)) || enVoices[0];
       const maleVoice = enVoices.find(v => /male|david|alex|george|daniel/i.test(v.name)) || enVoices[1] || enVoices[0];
@@ -297,10 +288,22 @@
       function speakNextLine() {
         if (currentLineIndex >= lines.length) return;
 
-        const line = lines[currentLineIndex++];
-        const isMan = /^Man:/i.test(line.trim());
-        
-        const cleanText = line.replace(/^(Man|Woman):\s*/i, '');
+        const originalLine = lines[currentLineIndex++];
+
+        // 1. 判斷是否為男性發音
+        const isMan = /(^|\(|\s)(man|male|speaker 1|m)(:|\s|\))/i.test(originalLine);
+
+        // 2. 清理文字：移除冒號前的名字、括號內容 (如 (A), (Woman), Man: 等)
+        let cleanText = originalLine
+          .replace(/^[^:：]+[:：]\s*/, '')   // 移除 "Man:" 或 "Woman:" 
+          .replace(/\([^)]*\)/g, '')         // 移除括號內容 "(A)" 或 "(Woman)"
+          .replace(/\[[^\]]*\]/g, '')       // 移除中括號內容
+          .trim();
+
+        if (!cleanText) {
+          speakNextLine(); // 若這行被全濾掉則直接朗讀下一行
+          return;
+        }
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'en-US';
@@ -321,7 +324,7 @@
       speakNextLine();
     }
 
-    // 🎨 結構化解析與完整中文翻譯渲染
+    // 🎨 解析呈現 logic
     function handleAnswer(selectedIndex) {
       if (isAnswered) return;
       isAnswered = true;
