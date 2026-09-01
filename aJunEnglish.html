@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TOEIC 多益 AI 動態刷題網</title>
+  <style>
+    :root {
+      --primary-listening: #2563EB;
+      --primary-reading: #D97706;
+      --bg-color: #F3F4F6;
+      --card-bg: #FFFFFF;
+      --text-color: #1F2937;
+      --success: #10B981;
+      --danger: #EF4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .container {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 650px;
+      padding: 24px;
+      margin-top: 10px;
+    }
+
+    h1 { text-align: center; color: #111827; margin-top: 0; font-size: 22px; }
+
+    .section-tabs { display: flex; background-color: #E5E7EB; border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+    .sec-tab {
+      flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 14px; font-weight: bold;
+      border-radius: 8px; cursor: pointer; color: #4B5563; transition: all 0.2s;
+    }
+    .sec-tab.active-listening { background: var(--primary-listening); color: white; }
+    .sec-tab.active-reading { background: var(--primary-reading); color: white; }
+
+    .quiz-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; position: relative; min-height: 300px; }
+    .part-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .badge { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; }
+    .badge-l { background-color: #DBEAFE; color: #1E40AF; }
+    .badge-r { background-color: #FEF3C7; color: #92400E; }
+
+    .part1-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 16px; }
+    .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; white-space: pre-line; }
+    
+    .btn-audio { width: 100%; background-color: var(--primary-listening); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 14px; }
+    .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.5; }
+
+    .options-list { display: flex; flex-direction: column; gap: 10px; }
+    .opt-btn { padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; text-align: left; font-size: 14px; cursor: pointer; }
+    .opt-btn.correct { background: #D1FAE5 !important; border-color: #10B981 !important; color: #065F46; font-weight: bold; }
+    .opt-btn.incorrect { background: #FEE2E2 !important; border-color: #EF4444 !important; color: #991B1B; }
+
+    .analysis-box { margin-top: 14px; padding: 12px; background: #F3F4F6; border-radius: 8px; display: none; font-size: 13px; line-height: 1.6; }
+    .transcript-box { background: #EFF6FF; border-left: 3px solid var(--primary-listening); padding: 10px; margin: 8px 0; font-size: 13px; white-space: pre-line; }
+
+    .next-btn { width: 100%; margin-top: 14px; padding: 12px; background: #111827; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
+    
+    .loading-overlay {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9);
+      display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; font-weight: bold; color: #4B5563;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>🤖 多益 AI 自動刷題網</h1>
+
+    <div class="section-tabs">
+      <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力題型</button>
+      <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀題型</button>
+    </div>
+
+    <div class="quiz-card" id="quiz-card">
+      <div id="loading" class="loading-overlay" style="display:none;">
+        <div>✨ AI 正在生成全新題目中，請稍候...</div>
+      </div>
+
+      <div class="part-header">
+        <span id="part-badge" class="badge badge-l">Part --</span>
+        <button onclick="fetchNewQuestionFromAI()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #D1D5DB; background: white;">🔄 換一題</button>
+      </div>
+
+      <img id="question-img" class="part1-image" src="" alt="Part 1 照片" style="display:none;" />
+      <div id="passage-box" class="passage-box" style="display:none;"></div>
+
+      <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()" style="display:none;">
+        🔊 點擊播放聽力語音 (TTS)
+      </button>
+
+      <div class="question-title" id="question-text">載入中...</div>
+      <div class="options-list" id="options-box"></div>
+      <div class="analysis-box" id="analysis-box"></div>
+      <button class="next-btn" id="next-btn" onclick="fetchNewQuestionFromAI()">下一題 (AI 生成) 👉</button>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ 請將下方替換為你的 Cloudflare Worker 部署後的完整 URL
+    const WORKER_URL = "https://toeic-ai-proxy.YOUR-SUBDOMAIN.workers.dev";
+
+    let currentSection = 'listening';
+    let currentQuestion = null;
+    let isAnswered = false;
+
+    window.onload = () => {
+      fetchNewQuestionFromAI();
+    };
+
+    function selectSection(sec) {
+      currentSection = sec;
+      const tabs = document.querySelectorAll('.sec-tab');
+      tabs.forEach(tab => tab.className = 'sec-tab');
+      if (sec === 'listening') tabs[0].classList.add('active-listening');
+      else tabs[1].classList.add('active-reading');
+
+      fetchNewQuestionFromAI();
+    }
+
+    async function fetchNewQuestionFromAI() {
+      document.getElementById('loading').style.display = 'flex';
+      document.getElementById('analysis-box').style.display = 'none';
+      document.getElementById('next-btn').style.display = 'none';
+      isAnswered = false;
+
+      const parts = currentSection === 'listening' ? ['p1', 'p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
+      const randomPart = parts[Math.floor(Math.random() * parts.length)];
+
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentSection, randomPart })
+        });
+
+        if (!response.ok) throw new Error("後端回應異常");
+
+        const data = await response.json();
+        const rawJsonStr = data.candidates[0].content.parts[0].text;
+        currentQuestion = JSON.parse(rawJsonStr);
+        
+        renderQuestion(currentQuestion);
+      } catch (err) {
+        console.error(err);
+        alert("題目生成失敗，請檢查 WORKER_URL 是否填寫正確，以及中繼站部署狀態。");
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+
+    function renderQuestion(q) {
+      document.getElementById('part-badge').innerText = q.partName;
+      document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
+
+      // Part 1 照片控制
+      const qImg = document.getElementById('question-img');
+      if (q.imageUrl && q.part === 'p1') {
+        qImg.src = q.imageUrl;
+        qImg.style.display = 'block';
+      } else {
+        qImg.style.display = 'none';
+      }
+
+      // 閱讀文章控制
+      const passageBox = document.getElementById('passage-box');
+      if (q.passage) {
+        passageBox.style.display = 'block';
+        passageBox.innerText = q.passage;
+      } else {
+        passageBox.style.display = 'none';
+      }
+
+      // 聽力按鈕控制
+      const audioBtn = document.getElementById('audio-btn');
+      audioBtn.style.display = (q.section === 'listening') ? 'block' : 'none';
+
+      document.getElementById('question-text').innerText = q.question;
+
+      const optionsBox = document.getElementById('options-box');
+      optionsBox.innerHTML = '';
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'opt-btn';
+        btn.innerText = opt;
+        btn.onclick = () => handleAnswer(i);
+        optionsBox.appendChild(btn);
+      });
+    }
+
+    function playCurrentAudio() {
+      if (!currentQuestion) return;
+      const speechText = currentQuestion.audioScript || currentQuestion.question;
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(speechText);
+      u.lang = 'en-US';
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    }
+
+    function handleAnswer(selectedIndex) {
+      if (isAnswered) return;
+      isAnswered = true;
+
+      const isCorrect = selectedIndex === currentQuestion.answer;
+      const btns = document.querySelectorAll('.opt-btn');
+
+      btns.forEach(b => b.disabled = true);
+
+      if (isCorrect) {
+        btns[selectedIndex].classList.add('correct');
+      } else {
+        btns[selectedIndex].classList.add('incorrect');
+        btns[currentQuestion.answer].classList.add('correct');
+      }
+
+      const analysisBox = document.getElementById('analysis-box');
+      analysisBox.style.display = 'block';
+
+      let transcriptHtml = '';
+      if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
+        transcriptHtml = `
+          <div class="transcript-box">
+            <strong>📝 聽力音檔逐字稿：</strong><br>${currentQuestion.audioScript}
+          </div>
+        `;
+      }
+
+      analysisBox.innerHTML = `
+        <strong>${isCorrect ? '✅ 回答正確！' : '❌ 答錯囉！'}</strong>
+        ${transcriptHtml}
+        <div>${currentQuestion.explanation}</div>
+      `;
+
+      document.getElementById('next-btn').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
