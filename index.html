@@ -113,7 +113,7 @@
   </div>
 
   <script>
-    // ⚠️ 請將下方替換為你的 Cloudflare Worker 部署後的完整 URL
+    // ⚠️ 請務必將下方引號內替換為你 Cloudflare Worker 部署後的完整 URL
     const WORKER_URL = "https://toeic-ai-quiz.ellen6225.workers.dev";
 
     let currentSection = 'listening';
@@ -150,16 +150,21 @@
           body: JSON.stringify({ currentSection, randomPart })
         });
 
-        if (!response.ok) throw new Error("後端回應異常");
-
         const data = await response.json();
+
+        // 若 Worker 或 Google API 回傳錯誤訊息，直接拋出例外
+        if (!response.ok || data.error) {
+          throw new Error(data.error || "中繼站回應異常");
+        }
+
         const rawJsonStr = data.candidates[0].content.parts[0].text;
         currentQuestion = JSON.parse(rawJsonStr);
         
         renderQuestion(currentQuestion);
       } catch (err) {
         console.error(err);
-        alert("題目生成失敗，請檢查 WORKER_URL 是否填寫正確，以及中繼站部署狀態。");
+        // 跳出具體錯誤訊息彈窗
+        alert(`生成失敗：${err.message}`);
       } finally {
         document.getElementById('loading').style.display = 'none';
       }
