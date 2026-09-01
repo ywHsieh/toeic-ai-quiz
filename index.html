@@ -169,14 +169,14 @@
   </div>
 
   <script>
-    // ⚠️ 請替換為你部署後的 Cloudflare Worker 網址
+    // ⚠️ 請替換為你部署後的 Cloudflare Worker 完整網址
     const WORKER_URL = "https://toeic-ai-quiz.ellen6225.workers.dev";
 
     let currentSection = 'listening';
     let currentQuestion = null;
     let isAnswered = false;
 
-    // 預先載入語音引擎
+    // 預先載入系統語音庫
     let systemVoices = [];
     function loadVoices() {
       systemVoices = window.speechSynthesis.getVoices();
@@ -220,12 +220,21 @@
           throw new Error(data.error || "中繼站回應異常");
         }
 
-        const rawJsonStr = data.candidates[0].content.parts[0].text;
+        let rawJsonStr = data.candidates[0].content.parts[0].text;
+
+        // 清理可能出現的 markdown json 標籤
+        rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+
         currentQuestion = JSON.parse(rawJsonStr);
+
+        // 如果是 p1 且沒有圖片，補上預設圖片
+        if (currentQuestion.part === 'p1' && !currentQuestion.imageUrl) {
+          currentQuestion.imageUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80";
+        }
         
         renderQuestion(currentQuestion);
       } catch (err) {
-        console.error(err);
+        console.error("解析失敗詳情：", err);
         alert(`生成失敗：${err.message}`);
       } finally {
         document.getElementById('loading').style.display = 'none';
@@ -271,7 +280,7 @@
       });
     }
 
-    // 🎧 智能朗讀 (自動過濾標籤，切換男女聲)
+    // 🎧 智能朗讀：自動去除冒號前角色名稱、括號 (A)/(Woman) 等，並切換男女聲
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
@@ -290,18 +299,18 @@
 
         const originalLine = lines[currentLineIndex++];
 
-        // 1. 判斷是否為男性發音
+        // 1. 判斷是否為男性聲音
         const isMan = /(^|\(|\s)(man|male|speaker 1|m)(:|\s|\))/i.test(originalLine);
 
-        // 2. 清理文字：移除冒號前的名字、括號內容 (如 (A), (Woman), Man: 等)
+        // 2. 清理過濾：去除 "Man:"、"(A)"、"(Woman)" 等無關朗讀的標籤
         let cleanText = originalLine
-          .replace(/^[^:：]+[:：]\s*/, '')   // 移除 "Man:" 或 "Woman:" 
-          .replace(/\([^)]*\)/g, '')         // 移除括號內容 "(A)" 或 "(Woman)"
-          .replace(/\[[^\]]*\]/g, '')       // 移除中括號內容
+          .replace(/^[^:：]+[:：]\s*/, '')   // 移除 "Man:" 或 "Woman:"
+          .replace(/\([^)]*\)/g, '')         // 移除圓括號內容如 "(A)"
+          .replace(/\[[^\]]*\]/g, '')       // 移除方括號內容
           .trim();
 
         if (!cleanText) {
-          speakNextLine(); // 若這行被全濾掉則直接朗讀下一行
+          speakNextLine(); // 如果該行清理後沒有可朗讀內容，跳過
           return;
         }
 
