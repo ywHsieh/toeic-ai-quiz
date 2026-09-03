@@ -631,6 +631,7 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
+      // 1. 聽力音檔逐字稿區塊
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
         let cleanScript = currentQuestion.audioScript
@@ -639,13 +640,14 @@
           .replace(/\n/g, '<br>');
 
         transcriptHtml = `
-          <div class="transcript-box">
-            <div style="font-weight:bold; color:#1E40AF; margin-bottom:4px;">📝 聽力音檔逐字稿：</div>
-            ${cleanScript}
+          <div class="transcript-box" style="margin-bottom: 16px;">
+            <div style="font-weight:bold; color:#1E40AF; margin-bottom:6px;">📝 聽力音檔逐字稿：</div>
+            <div style="line-height: 1.6;">${cleanScript}</div>
           </div>
         `;
       }
 
+      // 2. 中文完整逐字翻譯 + 題目與選項翻譯
       let translationHtml = '';
       if (currentQuestion.translation) {
         let cleanTrans = currentQuestion.translation
@@ -653,14 +655,17 @@
           .trim()
           .replace(/\n/g, '<br>');
 
+        let qTranslation = currentQuestion.questionTranslation ? `<br><br><strong>題目翻譯：</strong>${currentQuestion.questionTranslation}` : '';
+
         translationHtml = `
-          <div class="translation-box">
-            <div style="font-weight:bold; color:#92400E; margin-bottom:4px;">🌐 中文完整逐字翻譯：</div>
-            ${cleanTrans}
+          <div class="translation-box" style="margin-bottom: 16px;">
+            <div style="font-weight:bold; color:#92400E; margin-bottom:6px;">🌐 中文完整逐字翻譯：</div>
+            <div style="line-height: 1.6;">${cleanTrans}${qTranslation}</div>
           </div>
         `;
       }
 
+      // 3. 多益重要單字區塊
       let vocabHtml = '';
       if (currentQuestion.vocabularies && currentQuestion.vocabularies.length > 0) {
         let rows = currentQuestion.vocabularies.map(v => `
@@ -672,7 +677,7 @@
         `).join('');
 
         vocabHtml = `
-          <div class="analysis-section">
+          <div class="analysis-section" style="margin-top: 16px;">
             <div class="analysis-title">📚 多益重要單字：</div>
             <table class="vocab-table">
               <thead>
@@ -684,11 +689,13 @@
         `;
       }
 
-      const formattedExplanation = currentQuestion.explanation
+      // 4. 題目與選項解析（自動美化換行）
+      const formattedExplanation = (currentQuestion.explanation || '')
         .replace(/【[^】]+】/g, '')
         .trim()
         .replace(/\n/g, '<br>')
-        .replace(/(考點說明|題目解析|選項解析)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
+        .replace(/(題目解析|考點說明)[:：]?/g, '<br><strong>$1：</strong><br>')
+        .replace(/(選項解析)[:：]?/g, '<br><br><strong>$1：</strong><br>');
 
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
@@ -700,7 +707,7 @@
 
         <div class="analysis-section">
           <div class="analysis-title">💡 題目與選項解析：</div>
-          <div>${formattedExplanation}</div>
+          <div style="line-height: 1.6; margin-top: 6px;">${formattedExplanation}</div>
         </div>
 
         ${vocabHtml}
