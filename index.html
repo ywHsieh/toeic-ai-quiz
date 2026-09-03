@@ -57,7 +57,7 @@
     .badge-l { background-color: #DBEAFE; color: #1E40AF; }
     .badge-r { background-color: #FEF3C7; color: #92400E; }
 
-    .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.6; margin-bottom: 14px; white-space: pre-line; }
+    .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13.5px; line-height: 1.7; margin-bottom: 14px; white-space: pre-line; }
     
     .audio-control-bar {
       display: flex;
@@ -82,7 +82,7 @@
     .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.6; white-space: pre-line; }
 
     .options-list { display: flex; flex-direction: column; gap: 10px; }
-    .opt-btn { padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; text-align: left; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+    .opt-btn { padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; text-align: left; font-size: 14px; cursor: pointer; transition: all 0.2s; line-height: 1.5; }
     .opt-btn.correct { background: #D1FAE5 !important; border-color: #10B981 !important; color: #065F46; font-weight: bold; }
     .opt-btn.incorrect { background: #FEE2E2 !important; border-color: #EF4444 !important; color: #991B1B; }
 
@@ -168,6 +168,12 @@
     }
 
     /* 個人紀錄頁面樣式 */
+    .profile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
     .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
     .stat-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; text-align: center; }
     .stat-value { font-size: 20px; font-weight: bold; color: var(--primary-profile); margin-top: 4px; }
@@ -179,6 +185,8 @@
     .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
     .btn-remove { background: #EF4444; color: white; }
     .btn-review { background: #2563EB; color: white; }
+    .btn-reset-all { background: #DC2626; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
+    .btn-reset-all:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
@@ -223,7 +231,10 @@
     </div>
 
     <div class="profile-card" id="profile-card" style="display: none;">
-      <h3 style="margin-top: 0; color: #1E293B; font-size: 18px;">📊 我的個人紀錄</h3>
+      <div class="profile-header">
+        <h3 style="margin: 0; color: #1E293B; font-size: 18px;">📊 我的個人紀錄</h3>
+        <button onclick="resetAllStats()" class="btn-reset-all">🗑️ 清除所有個人紀錄</button>
+      </div>
       
       <div class="stats-grid">
         <div class="stat-card">
@@ -281,6 +292,12 @@
     window.onload = () => {
       fetchNewQuestionFromAI();
     };
+
+    // 格式化文字，將原本字面值的 \n 轉為 <br>
+    function formatText(str) {
+      if (!str) return '';
+      return str.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+    }
 
     function selectSection(sec) {
       currentSection = sec;
@@ -376,6 +393,17 @@
       }
     }
 
+    // 重置所有統計與紀錄（全部清零）
+    function resetAllStats() {
+      if (confirm("確定要將所有練習數據與錯題紀錄全部清零嗎？此動作無法復原。")) {
+        userStats = { total: 0, correct: 0 };
+        wrongBook = [];
+        localStorage.removeItem('toeic_stats');
+        localStorage.removeItem('toeic_wrong_book');
+        renderProfile();
+      }
+    }
+
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     async function fetchWithRetry(url, options, maxRetries = 3) {
@@ -411,7 +439,6 @@
       }
     }
 
-    // 核心優化：背景非同步自動補充題目池
     async function replenishQueue(sec) {
       if (questionQueue[sec].length >= MAX_QUEUE_SIZE || isFetchingQueue) return;
       
@@ -438,7 +465,6 @@
         console.warn("背景預載題目失敗：", err);
       } finally {
         isFetchingQueue = false;
-        // 若庫存尚未額滿，持續遞迴預載
         if (questionQueue[sec].length < MAX_QUEUE_SIZE) {
           replenishQueue(sec);
         }
@@ -453,16 +479,13 @@
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
 
-      // 1. 優先從佇列 (Cache) 取出已生成好的題目
       if (questionQueue[currentSection].length > 0) {
         currentQuestion = questionQueue[currentSection].shift();
         renderQuestion(currentQuestion);
-        // 取走題目後，立刻觸發背景補貨
         replenishQueue(currentSection);
         return;
       }
 
-      // 2. 佇列空了（如初次載入或連續換題），才顯示 Loading 動畫
       loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
       loadingEl.style.display = 'flex';
 
@@ -488,7 +511,6 @@
         currentQuestion = JSON.parse(rawJsonStr);
         renderQuestion(currentQuestion);
 
-        // 成功載入題目後，觸發背景預載下一題
         replenishQueue(currentSection);
       } catch (err) {
         console.error("解析失敗詳情：", err);
@@ -513,16 +535,14 @@
       const passageBox = document.getElementById('passage-box');
       if (q.passage && q.section !== 'listening') {
         passageBox.style.display = 'block';
-        passageBox.innerHTML = q.passage.replace(/\n/g, '<br>');
+        passageBox.innerHTML = formatText(q.passage);
       } else {
         passageBox.style.display = 'none';
       }
 
-      // 只要是 listening 題型，就顯示語音播放區塊
       const audioContainer = document.getElementById('audio-control-container');
       audioContainer.style.display = (q.section === 'listening') ? 'flex' : 'none';
 
-      // Part 2 聽力題目處理：預設隱藏題目文字
       if (isPart2(q)) {
         document.getElementById('question-text').innerText = "🔊 點擊播放聽力語音";
       } else {
@@ -531,15 +551,22 @@
 
       const optionsBox = document.getElementById('options-box');
       optionsBox.innerHTML = '';
+
+      const optionLabels = ['(A)', '(B)', '(C)', '(D)'];
       q.options.forEach((opt, i) => {
         const btn = document.createElement('button');
         btn.className = 'opt-btn';
-        btn.innerText = opt;
+        
+        // 檢查選項字串是否已帶有 (A)/(B) 標籤，若無則自動補上
+        let cleanOptText = opt.trim();
+        const hasPrefix = /^\([A-D]\)/i.test(cleanOptText);
+        const prefix = optionLabels[i] || `(${String.fromCharCode(65 + i)})`;
+
+        btn.innerText = hasPrefix ? cleanOptText : `${prefix} ${cleanOptText}`;
         btn.onclick = () => handleAnswer(i);
         optionsBox.appendChild(btn);
       });
 
-      // Part 2 切換題目時自動播放語音
       if (isPart2(q)) {
         setTimeout(() => playCurrentAudio(), 300);
       }
@@ -549,7 +576,6 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      // 相容 audioScript / script / conversation / passage / question
       const rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
         : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || currentQuestion.passage || currentQuestion.question);
@@ -631,15 +657,11 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
-      // 多相容欄位提取逐字稿
       let scriptContent = currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || (currentQuestion.section === 'listening' ? currentQuestion.passage : null);
 
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && scriptContent) {
-        let cleanScript = scriptContent
-          .replace(/【[^】]+】/g, '')
-          .trim()
-          .replace(/\n/g, '<br>');
+        let cleanScript = formatText(scriptContent.replace(/【[^】]+】/g, '').trim());
 
         transcriptHtml = `
           <div class="transcript-box" style="margin-bottom: 16px;">
@@ -651,12 +673,8 @@
 
       let translationHtml = '';
       if (currentQuestion.translation) {
-        let cleanTrans = currentQuestion.translation
-          .replace(/【[^】]+】/g, '')
-          .trim()
-          .replace(/\n/g, '<br>');
-
-        let qTranslation = currentQuestion.questionTranslation ? `<br><br><strong>題目翻譯：</strong>${currentQuestion.questionTranslation}` : '';
+        let cleanTrans = formatText(currentQuestion.translation.replace(/【[^】]+】/g, '').trim());
+        let qTranslation = currentQuestion.questionTranslation ? `<br><br><strong>題目翻譯：</strong>${formatText(currentQuestion.questionTranslation)}` : '';
 
         translationHtml = `
           <div class="translation-box" style="margin-bottom: 16px;">
@@ -689,12 +707,12 @@
         `;
       }
 
-      const formattedExplanation = (currentQuestion.explanation || '')
-        .replace(/【[^】]+】/g, '')
-        .trim()
-        .replace(/\n/g, '<br>')
-        .replace(/(題目解析|考點說明)[:：]?/g, '<br><strong>$1：</strong><br>')
-        .replace(/(選項解析)[:：]?/g, '<br><br><strong>$1：</strong><br>');
+      const rawExplanation = (currentQuestion.explanation || '').replace(/【[^】]+】/g, '').trim();
+      const formattedExplanation = formatText(
+        rawExplanation
+          .replace(/(題目解析|考點說明)[:：]?/g, '\n<strong>$1：</strong>\n')
+          .replace(/(選項解析)[:：]?/g, '\n\n<strong>$1：</strong>\n')
+      );
 
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
