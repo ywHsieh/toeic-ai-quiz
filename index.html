@@ -236,7 +236,7 @@
     <div class="profile-card" id="profile-card" style="display: none;">
       <div class="profile-header">
         <h3 style="margin: 0; color: #1E293B; font-size: 18px;">📊 我的個人紀錄</h3>
-        <button onclick="resetAllStats()" class="btn-reset-all">🗑️ 清除所有個人紀錄</button>
+        <button onclick="resetAllStats()" class="btn-reset-all">🗑️ 清空所有個人紀錄</button>
       </div>
       
       <div class="stats-grid">
@@ -343,6 +343,15 @@
     function saveWrongQuestion(q) {
       if (!wrongBook.some(item => item.question === q.question)) {
         wrongBook.unshift(q);
+        localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
+      }
+    }
+
+    // 移除錯題邏輯：根據題目內容搜尋並刪除
+    function removeWrongQuestionByContent(q) {
+      const targetIndex = wrongBook.findIndex(item => item.question === q.question);
+      if (targetIndex !== -1) {
+        wrongBook.splice(targetIndex, 1);
         localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
       }
     }
@@ -546,7 +555,6 @@
       const isListening = (q.section === 'listening');
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
-      // 修改重點 1：所有聽力題型的題目預設皆為音檔播放（不直接顯示文字題目）
       if (isListening) {
         document.getElementById('question-text').innerText = "🔊 點擊播放聽力語音";
       } else {
@@ -575,14 +583,12 @@
       }
     }
 
-    // 修改重點 2：朗讀聲音區分男/女，且不唸出 Man:, Woman:, (M) 等文字
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
       const rawScript = currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || currentQuestion.passage || currentQuestion.question;
 
-      // 切分逐行朗讀
       const lines = rawScript.split(/\r?\n/).filter(line => line.trim() !== '');
 
       const speedSelect = document.getElementById('playback-speed');
@@ -599,10 +605,8 @@
 
         const originalLine = lines[currentLineIndex++];
         
-        // 判斷角色是否為男性
         const isMan = /(^|\s|\()(man|male|speaker\s*1|m)(\b|[:：\)])/i.test(originalLine);
 
-        // 徹底濾除角色名稱及標籤，只保留朗讀內容
         let cleanText = originalLine
           .replace(/^(\s*\(?\s*(man|woman|male|female|speaker\s*\d+|m|w)\s*\)?\s*[:：.-]*)/i, '')
           .replace(/^[^:：]+[:：]\s*/, '')
@@ -619,13 +623,12 @@
         utterance.lang = 'en-US';
         utterance.rate = selectedRate;
 
-        // 男女生音色與音調設定
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
-          utterance.pitch = 0.85; // 音調較低
+          utterance.pitch = 0.85;
         } else {
           if (femaleVoice) utterance.voice = femaleVoice;
-          utterance.pitch = 1.15; // 音調較高
+          utterance.pitch = 1.15;
         }
 
         utterance.onend = speakNextLine;
@@ -640,7 +643,6 @@
       if (isAnswered) return;
       isAnswered = true;
 
-      // 答題後揭示文字題目
       if (currentQuestion.section === 'listening') {
         document.getElementById('question-text').innerText = currentQuestion.question;
       }
@@ -648,8 +650,18 @@
       const isCorrect = selectedIndex === currentQuestion.answer;
       
       updateStats(isCorrect);
+
+      let removedFromWrongBook = false;
       if (!isCorrect) {
+        // 答錯時加入錯題本
         saveWrongQuestion(currentQuestion);
+      } else {
+        // 答對時：若該題原本存在於錯題本中，將其自動移除
+        const existsInWrongBook = wrongBook.some(item => item.question === currentQuestion.question);
+        if (existsInWrongBook) {
+          removeWrongQuestionByContent(currentQuestion);
+          removedFromWrongBook = true;
+        }
       }
 
       const btns = document.querySelectorAll('.opt-btn');
@@ -715,13 +727,18 @@
         `;
       }
 
-      // 修改重點 3：解析內容自動換行優化
       const rawExplanation = (currentQuestion.explanation || '').replace(/【[^】]+】/g, '').trim();
       const formattedExplanation = formatText(rawExplanation);
 
+      // 設定答題結果提示文字（增加已從錯題本移除的友善提示）
+      let statusText = isCorrect ? '🎉 回答正確！' : '❌ 答錯囉！正確答案是：' + ['(A)', '(B)', '(C)', '(D)'][currentQuestion.answer];
+      if (removedFromWrongBook) {
+        statusText += ' ✨ (此題已從錯題本中移除)';
+      }
+
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
-          ${isCorrect ? '🎉 回答正確！' : '❌ 答錯囉！正確答案是：' + ['(A)', '(B)', '(C)', '(D)'][currentQuestion.answer]}
+          ${statusText}
         </div>
         
         ${transcriptHtml}
