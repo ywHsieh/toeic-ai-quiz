@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A Jun 多益練習</title>
+  <title>TOEIC 多益 AI 動態刷題網</title>
   <style>
     :root {
       --primary-listening: #2563EB;
       --primary-reading: #D97706;
-      --primary-profile: #7C3AED;
       --bg-color: #F3F4F6;
       --card-bg: #FFFFFF;
       --text-color: #1F2937;
@@ -42,22 +41,22 @@
 
     h1 { text-align: center; color: #111827; margin-top: 0; font-size: 22px; }
 
-    .section-tabs { display: flex; background-color: #E5E7EB; border-radius: 12px; padding: 4px; margin-bottom: 16px; gap: 4px; }
+    .section-tabs { display: flex; background-color: #E5E7EB; border-radius: 12px; padding: 4px; margin-bottom: 16px; }
     .sec-tab {
-      flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 13px; font-weight: bold;
-      border-radius: 8px; cursor: pointer; color: #4B5563; transition: all 0.2s; text-align: center;
+      flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 14px; font-weight: bold;
+      border-radius: 8px; cursor: pointer; color: #4B5563; transition: all 0.2s;
     }
     .sec-tab.active-listening { background: var(--primary-listening); color: white; }
     .sec-tab.active-reading { background: var(--primary-reading); color: white; }
-    .sec-tab.active-profile { background: var(--primary-profile); color: white; }
 
-    .quiz-card, .profile-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; position: relative; min-height: 300px; }
+    .quiz-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; position: relative; min-height: 300px; }
     .part-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .badge { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; }
     .badge-l { background-color: #DBEAFE; color: #1E40AF; }
     .badge-r { background-color: #FEF3C7; color: #92400E; }
 
-    .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13.5px; line-height: 1.7; margin-bottom: 14px; white-space: pre-line; }
+    .part1-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 16px; }
+    .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; white-space: pre-line; }
     
     .audio-control-bar {
       display: flex;
@@ -79,10 +78,10 @@
       cursor: pointer;
     }
 
-    .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.6; white-space: pre-line; }
+    .question-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; line-height: 1.5; }
 
     .options-list { display: flex; flex-direction: column; gap: 10px; }
-    .opt-btn { padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; text-align: left; font-size: 14px; cursor: pointer; transition: all 0.2s; line-height: 1.5; }
+    .opt-btn { padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; text-align: left; font-size: 14px; cursor: pointer; transition: all 0.2s; }
     .opt-btn.correct { background: #D1FAE5 !important; border-color: #10B981 !important; color: #065F46; font-weight: bold; }
     .opt-btn.incorrect { background: #FEE2E2 !important; border-color: #EF4444 !important; color: #991B1B; }
 
@@ -111,7 +110,7 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      line-height: 1.6;
+      white-space: pre-line;
       font-size: 13.5px;
     }
 
@@ -121,7 +120,7 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      line-height: 1.6;
+      white-space: pre-line;
       font-size: 13.5px;
       color: #78350F;
     }
@@ -162,98 +161,25 @@
     .next-btn { width: 100%; margin-top: 14px; padding: 12px; background: #111827; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
     
     .loading-overlay {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.95);
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9);
       display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; font-weight: bold; color: #4B5563;
-      z-index: 10; text-align: center; padding: 20px;
+      z-index: 10;
     }
-
-    .profile-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-    .stat-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; text-align: center; }
-    .stat-value { font-size: 20px; font-weight: bold; color: var(--primary-profile); margin-top: 4px; }
-    .stat-label { font-size: 12px; color: #64748B; }
-
-    .wrong-list { display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; }
-    .wrong-item { background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .wrong-info { font-size: 13px; font-weight: 500; color: #991B1B; flex: 1; margin-right: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
-    .btn-remove { background: #EF4444; color: white; }
-    .btn-review { background: #2563EB; color: white; }
-    .btn-reset-all { background: #DC2626; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
-    .btn-reset-all:hover { opacity: 0.9; }
-
-    /* 全面客製化網頁置中 Modal */
-    .custom-modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(2px);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 999;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    .custom-modal-card {
-      background: #FFFFFF;
-      border-radius: 16px;
-      padding: 24px;
-      width: 90%;
-      max-width: 400px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      text-align: center;
-      animation: scaleUp 0.2s ease-out;
-    }
-
-    .custom-modal-icon { font-size: 36px; margin-bottom: 8px; }
-    .custom-modal-title { font-size: 18px; font-weight: bold; color: #1E293B; margin-bottom: 8px; }
-    .custom-modal-msg { font-size: 14px; color: #4B5563; margin-bottom: 20px; line-height: 1.5; }
-    
-    .custom-modal-actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    .modal-btn {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .modal-btn-primary { background: #EF4444; color: white; }
-    .modal-btn-primary:hover { background: #DC2626; }
-    .modal-btn-secondary { background: #E5E7EB; color: #374151; }
-    .modal-btn-secondary:hover { background: #D1D5DB; }
-
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h1>🤖 A Jun 多益練習</h1>
+    <h1>🤖 多益 AI 自動刷題網</h1>
 
     <div class="section-tabs">
       <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力題型</button>
       <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀題型</button>
-      <button class="sec-tab" onclick="selectSection('profile')">📊 個人紀錄</button>
     </div>
 
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
-        <div id="loading-text">⚡ AI 生成題目中，請耐心等候...</div>
+        <div>⚡ AI 極速生成題目中，請稍候...</div>
       </div>
 
       <div class="part-header">
@@ -261,11 +187,13 @@
         <button onclick="fetchNewQuestionFromAI()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #D1D5DB; background: white;">🔄 換一題</button>
       </div>
 
+      <img id="question-img" class="part1-image" src="" alt="Part 1 照片" style="display:none;" />
       <div id="passage-box" class="passage-box" style="display:none;"></div>
 
+      <!-- 聽力控制列：包含語音播放按鈕與速度下拉選單 -->
       <div id="audio-control-container" class="audio-control-bar" style="display:none;">
         <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()">
-          🔊 點擊播放聽力語音
+          🔊 點擊播放聽力語音 (TTS)
         </button>
         <select id="playback-speed" class="speed-select">
           <option value="0.75">0.75x 慢速</option>
@@ -278,62 +206,17 @@
       <div class="question-title" id="question-text">載入中...</div>
       <div class="options-list" id="options-box"></div>
       <div class="analysis-box" id="analysis-box"></div>
-      <button class="next-btn" id="next-btn" onclick="fetchNewQuestionFromAI()">下一題👉</button>
-    </div>
-
-    <div class="profile-card" id="profile-card" style="display: none;">
-      <div class="profile-header">
-        <h3 style="margin: 0; color: #1E293B; font-size: 18px;">📊 我的個人紀錄</h3>
-        <button onclick="resetAllStats()" class="btn-reset-all">🗑️ 清除所有個人紀錄</button>
-      </div>
-      
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">總練習題數</div>
-          <div class="stat-value" id="stat-total">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">答對題數</div>
-          <div class="stat-value" id="stat-correct" style="color: #059669;">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">整體正確率</div>
-          <div class="stat-value" id="stat-rate">0%</div>
-        </div>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h4 style="margin: 0; color: #1E293B;">📚 我的錯題本 (<span id="wrong-count">0</span>)</h4>
-        <button onclick="clearWrongBook()" class="btn-sm" style="background: #E5E7EB; color: #374151;">清空錯題本</button>
-      </div>
-
-      <div class="wrong-list" id="wrong-list-container">
-        <div style="text-align: center; color: #94A3B8; padding: 30px; font-size: 13.5px;">目前沒有錯題紀錄，繼續保持！ 🎉</div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- 置中通用 Modal 彈窗 -->
-  <div id="custom-modal" class="custom-modal-overlay" style="display: none;">
-    <div class="custom-modal-card">
-      <div class="custom-modal-icon" id="modal-icon">⚠️</div>
-      <div class="custom-modal-title" id="modal-title">系統提示</div>
-      <div class="custom-modal-msg" id="modal-text"></div>
-      <div class="custom-modal-actions" id="modal-actions"></div>
+      <button class="next-btn" id="next-btn" onclick="fetchNewQuestionFromAI()">下一題 (AI 生成) 👉</button>
     </div>
   </div>
 
   <script>
+    // ⚠️ 請替換為你部署後的 Cloudflare Worker 完整網址
     const WORKER_URL = "https://toeic-ai-quiz.ellen6225.workers.dev";
 
     let currentSection = 'listening';
     let currentQuestion = null;
     let isAnswered = false;
-    let isFetching = false;
-
-    let userStats = JSON.parse(localStorage.getItem('toeic_stats')) || { total: 0, correct: 0 };
-    let wrongBook = JSON.parse(localStorage.getItem('toeic_wrong_book')) || [];
 
     let systemVoices = [];
     function loadVoices() {
@@ -346,176 +229,23 @@
       fetchNewQuestionFromAI();
     };
 
-    // 單按鈕提示 Modal
-    function showCustomError(message, title = "系統提示", icon = "⚠️") {
-      document.getElementById('modal-icon').innerText = icon;
-      document.getElementById('modal-title').innerText = title;
-      document.getElementById('modal-text').innerText = message;
-      document.getElementById('modal-actions').innerHTML = `
-        <button class="modal-btn modal-btn-primary" onclick="hideCustomModal()">確定</button>
-      `;
-      document.getElementById('custom-modal').style.display = 'flex';
-    }
-
-    // 雙按鈕 Confirm Modal
-    function showConfirmModal(message, title = "確認操作", icon = "❓") {
-      return new Promise((resolve) => {
-        document.getElementById('modal-icon').innerText = icon;
-        document.getElementById('modal-title').innerText = title;
-        document.getElementById('modal-text').innerText = message;
-        
-        document.getElementById('modal-actions').innerHTML = `
-          <button class="modal-btn modal-btn-secondary" id="modal-btn-cancel">取消</button>
-          <button class="modal-btn modal-btn-primary" id="modal-btn-confirm">確定</button>
-        `;
-
-        document.getElementById('modal-btn-cancel').onclick = () => {
-          hideCustomModal();
-          resolve(false);
-        };
-        document.getElementById('modal-btn-confirm').onclick = () => {
-          hideCustomModal();
-          resolve(true);
-        };
-
-        document.getElementById('custom-modal').style.display = 'flex';
-      });
-    }
-
-    function hideCustomModal() {
-      document.getElementById('custom-modal').style.display = 'none';
-    }
-
-    function formatText(str) {
-      if (!str) return '';
-      return str.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
-    }
-
     function selectSection(sec) {
-      if (currentSection === sec && sec !== 'profile') return;
       currentSection = sec;
       const tabs = document.querySelectorAll('.sec-tab');
       tabs.forEach(tab => tab.className = 'sec-tab');
-
-      const quizCard = document.getElementById('quiz-card');
-      const profileCard = document.getElementById('profile-card');
-
-      if (sec === 'listening') {
-        tabs[0].classList.add('active-listening');
-        quizCard.style.display = 'block';
-        profileCard.style.display = 'none';
-        fetchNewQuestionFromAI();
-      } else if (sec === 'reading') {
-        tabs[1].classList.add('active-reading');
-        quizCard.style.display = 'block';
-        profileCard.style.display = 'none';
-        fetchNewQuestionFromAI();
-      } else if (sec === 'profile') {
-        tabs[2].classList.add('active-profile');
-        quizCard.style.display = 'none';
-        profileCard.style.display = 'block';
-        renderProfile();
-      }
-    }
-
-    function updateStats(isCorrect) {
-      userStats.total++;
-      if (isCorrect) userStats.correct++;
-      localStorage.setItem('toeic_stats', JSON.stringify(userStats));
-    }
-
-    function saveWrongQuestion(q) {
-      if (!wrongBook.some(item => item.question === q.question)) {
-        wrongBook.unshift(q);
-        localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
-      }
-    }
-
-    function renderProfile() {
-      document.getElementById('stat-total').innerText = userStats.total;
-      document.getElementById('stat-correct').innerText = userStats.correct;
-      const rate = userStats.total > 0 ? Math.round((userStats.correct / userStats.total) * 100) : 0;
-      document.getElementById('stat-rate').innerText = rate + '%';
-      
-      document.getElementById('wrong-count').innerText = wrongBook.length;
-
-      const container = document.getElementById('wrong-list-container');
-      if (wrongBook.length === 0) {
-        container.innerHTML = `<div style="text-align: center; color: #94A3B8; padding: 30px; font-size: 13.5px;">目前沒有錯題紀錄，繼續保持！ 🎉</div>`;
-        return;
-      }
-
-      container.innerHTML = wrongBook.map((q, index) => `
-        <div class="wrong-item">
-          <div class="wrong-info"><strong>[${q.partName || '多益題目'}]</strong> ${q.question}</div>
-          <div style="display: flex; gap: 6px;">
-            <button class="btn-sm btn-review" onclick="reviewWrongQuestion(${index})">複習</button>
-            <button class="btn-sm btn-remove" onclick="removeWrongQuestion(${index})">刪除</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function reviewWrongQuestion(index) {
-      const q = wrongBook[index];
-      currentSection = q.section || 'listening';
-      currentQuestion = q;
-      
-      const tabs = document.querySelectorAll('.sec-tab');
-      tabs.forEach(tab => tab.className = 'sec-tab');
-      if (currentSection === 'listening') tabs[0].classList.add('active-listening');
+      if (sec === 'listening') tabs[0].classList.add('active-listening');
       else tabs[1].classList.add('active-reading');
 
-      document.getElementById('quiz-card').style.display = 'block';
-      document.getElementById('profile-card').style.display = 'none';
-
-      renderQuestion(q);
-    }
-
-    function removeWrongQuestion(index) {
-      wrongBook.splice(index, 1);
-      localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
-      renderProfile();
-    }
-
-    // 改用置中 Modal
-    async function clearWrongBook() {
-      const confirmed = await showConfirmModal("確定要清空所有錯題紀錄嗎？此動作無法復原。", "清空錯題本");
-      if (confirmed) {
-        wrongBook = [];
-        localStorage.removeItem('toeic_wrong_book');
-        renderProfile();
-      }
-    }
-
-    // 改用置中 Modal
-    async function resetAllStats() {
-      const confirmed = await showConfirmModal("確定要將所有練習數據與錯題紀錄全部清零嗎？此動作無法復原。", "清空所有紀錄");
-      if (confirmed) {
-        userStats = { total: 0, correct: 0 };
-        wrongBook = [];
-        localStorage.removeItem('toeic_stats');
-        localStorage.removeItem('toeic_wrong_book');
-        renderProfile();
-      }
+      fetchNewQuestionFromAI();
     }
 
     async function fetchNewQuestionFromAI() {
-      if (isFetching) return;
-      isFetching = true;
-
-      const loadingEl = document.getElementById('loading');
-      const loadingText = document.getElementById('loading-text');
-      
+      document.getElementById('loading').style.display = 'flex';
       document.getElementById('analysis-box').style.display = 'none';
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
 
-      loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
-      loadingEl.style.display = 'flex';
-
-      // 聽力題型僅採用 p2, p3, p4 (完全排除 p1 圖片題)
-      const parts = currentSection === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
+      const parts = currentSection === 'listening' ? ['p1', 'p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
       const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
       try {
@@ -538,29 +268,28 @@
         renderQuestion(currentQuestion);
       } catch (err) {
         console.error("解析失敗詳情：", err);
-        showCustomError("AI 努力生成題目中，建議稍候片刻後再試一次！", "出題提示");
+        alert(`生成失敗：${err.message}`);
       } finally {
-        loadingEl.style.display = 'none';
-        isFetching = false;
+        document.getElementById('loading').style.display = 'none';
       }
     }
 
-    function isPart2(q) {
-      if (!q) return false;
-      const partName = (q.partName || '').toLowerCase();
-      return partName.includes('part 2') || partName.includes('part2') || partName.includes('p2');
-    }
-
     function renderQuestion(q) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      document.getElementById('part-badge').innerText = q.partName || (q.section === 'listening' ? '聽力測驗' : '閱讀測驗');
+      document.getElementById('part-badge').innerText = q.partName;
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
 
+      const qImg = document.getElementById('question-img');
+      if (q.imageUrl && q.part === 'p1') {
+        qImg.src = q.imageUrl;
+        qImg.style.display = 'block';
+      } else {
+        qImg.style.display = 'none';
+      }
+
       const passageBox = document.getElementById('passage-box');
-      if (q.passage && q.section !== 'listening') {
+      if (q.passage) {
         passageBox.style.display = 'block';
-        passageBox.innerHTML = formatText(q.passage);
+        passageBox.innerText = q.passage;
       } else {
         passageBox.style.display = 'none';
       }
@@ -568,42 +297,25 @@
       const audioContainer = document.getElementById('audio-control-container');
       audioContainer.style.display = (q.section === 'listening') ? 'flex' : 'none';
 
-      if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "🔊 點擊播放聽力語音";
-      } else {
-        document.getElementById('question-text').innerText = q.question;
-      }
+      document.getElementById('question-text').innerText = q.question;
 
       const optionsBox = document.getElementById('options-box');
       optionsBox.innerHTML = '';
-
-      const optionLabels = ['(A)', '(B)', '(C)', '(D)'];
       q.options.forEach((opt, i) => {
         const btn = document.createElement('button');
         btn.className = 'opt-btn';
-        
-        let cleanOptText = opt.trim();
-        const hasPrefix = /^\([A-D]\)/i.test(cleanOptText);
-        const prefix = optionLabels[i] || `(${String.fromCharCode(65 + i)})`;
-
-        btn.innerText = hasPrefix ? cleanOptText : `${prefix} ${cleanOptText}`;
+        btn.innerText = opt;
         btn.onclick = () => handleAnswer(i);
         optionsBox.appendChild(btn);
       });
-
-      if (isPart2(q)) {
-        setTimeout(() => playCurrentAudio(), 300);
-      }
     }
 
+    // 🎧 語音朗讀：支援動態速度調整與角色過濾
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      const rawScript = isPart2(currentQuestion) 
-        ? currentQuestion.question 
-        : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || currentQuestion.passage || currentQuestion.question);
-
+      const rawScript = currentQuestion.audioScript || currentQuestion.question;
       const lines = rawScript.split('\n').filter(line => line.trim() !== '');
 
       const speedSelect = document.getElementById('playback-speed');
@@ -636,7 +348,7 @@
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'en-US';
-        utterance.rate = selectedRate;
+        utterance.rate = selectedRate; // 套用使用者選擇的播放速度
 
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
@@ -657,18 +369,9 @@
       if (isAnswered) return;
       isAnswered = true;
 
-      if (isPart2(currentQuestion)) {
-        document.getElementById('question-text').innerText = currentQuestion.question;
-      }
-
       const isCorrect = selectedIndex === currentQuestion.answer;
-      
-      updateStats(isCorrect);
-      if (!isCorrect) {
-        saveWrongQuestion(currentQuestion);
-      }
-
       const btns = document.querySelectorAll('.opt-btn');
+
       btns.forEach(b => b.disabled = true);
 
       if (isCorrect) {
@@ -681,29 +384,22 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
-      let scriptContent = currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || (currentQuestion.section === 'listening' ? currentQuestion.passage : null);
-
       let transcriptHtml = '';
-      if (currentQuestion.section === 'listening' && scriptContent) {
-        let cleanScript = formatText(scriptContent.replace(/【[^】]+】/g, '').trim());
-
+      if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
         transcriptHtml = `
-          <div class="transcript-box" style="margin-bottom: 16px;">
-            <div style="font-weight:bold; color:#1E40AF; margin-bottom:6px;">📝 聽力音檔逐字稿：</div>
-            <div style="line-height: 1.6;">${cleanScript}</div>
+          <div class="transcript-box">
+            <div style="font-weight:bold; color:#1E40AF; margin-bottom:4px;">📝 聽力音檔逐字稿 (英文)：</div>
+            ${currentQuestion.audioScript}
           </div>
         `;
       }
 
       let translationHtml = '';
       if (currentQuestion.translation) {
-        let cleanTrans = formatText(currentQuestion.translation.replace(/【[^】]+】/g, '').trim());
-        let qTranslation = currentQuestion.questionTranslation ? `<br><br><strong>題目翻譯：</strong>${formatText(currentQuestion.questionTranslation)}` : '';
-
         translationHtml = `
-          <div class="translation-box" style="margin-bottom: 16px;">
-            <div style="font-weight:bold; color:#92400E; margin-bottom:6px;">🌐 中文完整逐字翻譯：</div>
-            <div style="line-height: 1.6;">${cleanTrans}${qTranslation}</div>
+          <div class="translation-box">
+            <div style="font-weight:bold; color:#92400E; margin-bottom:4px;">🌐 中文完整逐字翻譯：</div>
+            ${currentQuestion.translation}
           </div>
         `;
       }
@@ -719,7 +415,7 @@
         `).join('');
 
         vocabHtml = `
-          <div class="analysis-section" style="margin-top: 16px;">
+          <div class="analysis-section">
             <div class="analysis-title">📚 多益重要單字：</div>
             <table class="vocab-table">
               <thead>
@@ -731,12 +427,9 @@
         `;
       }
 
-      const rawExplanation = (currentQuestion.explanation || '').replace(/【[^】]+】/g, '').trim();
-      const formattedExplanation = formatText(
-        rawExplanation
-          .replace(/(題目解析|考點說明)[:：]?/g, '\n<strong>$1：</strong>\n')
-          .replace(/(選項解析)[:：]?/g, '\n\n<strong>$1：</strong>\n')
-      );
+      const formattedExplanation = currentQuestion.explanation
+        .replace(/\n/g, '<br>')
+        .replace(/(考點說明|題目解析|選項解析|【[^】]+】)[:：]?/g, '<strong style="color:#2563EB;">$1：</strong>');
 
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
@@ -748,7 +441,7 @@
 
         <div class="analysis-section">
           <div class="analysis-title">💡 題目與選項解析：</div>
-          <div style="line-height: 1.6; margin-top: 6px;">${formattedExplanation}</div>
+          <div>${formattedExplanation}</div>
         </div>
 
         ${vocabHtml}
