@@ -552,8 +552,9 @@
           success = true;
         } catch (err) {
           if (err.message === "429" && attempts < maxAttempts) {
-            loadingText.innerText = `⏳ 伺服器繁忙，自動重試中 (${attempts}/${maxAttempts})...`;
-            await new Promise(r => setTimeout(r, 2000 * attempts));
+            const waitTime = attempts * 3000;
+            loadingText.innerText = `⏳ 伺服器繁忙，${waitTime / 1000} 秒後自動重試 (${attempts}/${maxAttempts})...`;
+            await new Promise(r => setTimeout(r, waitTime));
           } else {
             if (attempts >= maxAttempts) {
               showCustomError("伺服器請求較頻繁 (429)，請稍候 5 秒後再點選「下一題」。");
