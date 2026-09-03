@@ -170,7 +170,6 @@
       z-index: 10; text-align: center; padding: 20px;
     }
 
-    /* 串流實時文字區域 */
     .stream-preview {
       font-family: monospace;
       font-size: 12px;
@@ -187,7 +186,6 @@
       word-break: break-all;
     }
 
-    /* 個人紀錄頁面樣式 */
     .profile-header {
       display: flex;
       justify-content: space-between;
@@ -208,7 +206,6 @@
     .btn-reset-all { background: #DC2626; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
     .btn-reset-all:hover { opacity: 0.9; }
 
-    /* 自訂居中錯誤 Modal 樣式 */
     .error-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -298,7 +295,7 @@
 
       <div class="part-header">
         <span id="part-badge" class="badge badge-l">Part --</span>
-        <button onclick="fetchNewQuestionFromAI()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #D1D5DB; background: white;">🔄 換一題</button>
+        <button id="change-btn" onclick="fetchNewQuestionFromAI()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #D1D5DB; background: white;">🔄 換一題</button>
       </div>
 
       <div id="passage-box" class="passage-box" style="display:none;"></div>
@@ -354,7 +351,6 @@
 
   </div>
 
-  <!-- 自訂畫面居中錯誤訊息 Modal -->
   <div id="error-modal" class="error-modal-overlay" style="display: none;">
     <div class="error-modal-card">
       <div class="error-modal-icon">⚠️</div>
@@ -369,16 +365,8 @@
     let currentSection = 'listening';
     let currentQuestion = null;
     let isAnswered = false;
+    let isFetching = false;
 
-    // 將 MAX_QUEUE_SIZE 降為 1 降低併發
-    const MAX_QUEUE_SIZE = 1;
-    const questionQueue = {
-      listening: [],
-      reading: []
-    };
-    let isFetchingQueue = false;
-
-    // 本地紀錄資料結構
     let userStats = JSON.parse(localStorage.getItem('toeic_stats')) || { total: 0, correct: 0 };
     let wrongBook = JSON.parse(localStorage.getItem('toeic_wrong_book')) || [];
 
@@ -393,7 +381,6 @@
       fetchNewQuestionFromAI();
     };
 
-    // 自訂居中錯誤提示彈窗顯示與關閉
     function showCustomError(message) {
       document.getElementById('error-modal-text').innerText = message;
       document.getElementById('error-modal').style.display = 'flex';
@@ -415,6 +402,7 @@
     }
 
     function selectSection(sec) {
+      if (currentSection === sec && sec !== 'profile') return;
       currentSection = sec;
       const tabs = document.querySelectorAll('.sec-tab');
       tabs.forEach(tab => tab.className = 'sec-tab');
@@ -526,11 +514,7 @@
       }
     }
 
-    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    // 使用 Streaming (串流) 方式請求 API 題目
     async function streamFetchQuestion(sec, onChunk) {
-      // 聽力全面移除 p1 照片題，改為 p2, p3, p4
       const parts = sec === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
       const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
@@ -541,6 +525,9 @@
       });
 
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error("429");
+        }
         throw new Error(`伺服器回應錯誤 (Status: ${response.status})`);
       }
 
@@ -564,70 +551,64 @@
                 if (onChunk) onChunk(accumulatedText);
               }
             } catch (e) {
-              // 忽略解析錯誤的碎片
+              // 忽略不完整的 JSON 碎片
             }
           }
         }
       }
 
-      // 清理可能的 Markdown 語法標示，嘗試解析成完整 JSON
       let cleanJsonStr = accumulatedText.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
       return JSON.parse(cleanJsonStr);
     }
 
-    // 增加時間間隔以防止 429 Limit
-    async function replenishQueue(sec) {
-      if (questionQueue[sec].length >= MAX_QUEUE_SIZE || isFetchingQueue) return;
-      
-      isFetchingQueue = true;
-      try {
-        // 設定 6 秒冷卻時間才觸發預載，減輕發送頻率
-        await sleep(6000);
-        const parsedQ = await streamFetchQuestion(sec);
-        questionQueue[sec].push(parsedQ);
-      } catch (err) {
-        console.warn("背景預載題目失敗：", err);
-      } finally {
-        isFetchingQueue = false;
-      }
-    }
-
     async function fetchNewQuestionFromAI() {
+      if (isFetching) return;
+      isFetching = true;
+
       const loadingEl = document.getElementById('loading');
       const loadingText = document.getElementById('loading-text');
       const streamPreview = document.getElementById('stream-preview');
+      const changeBtn = document.getElementById('change-btn');
       
       document.getElementById('analysis-box').style.display = 'none';
       document.getElementById('next-btn').style.display = 'none';
+      if (changeBtn) changeBtn.disabled = true;
       isAnswered = false;
-
-      // 若佇列有預載題目則直接快取讀取
-      if (questionQueue[currentSection].length > 0) {
-        currentQuestion = questionQueue[currentSection].shift();
-        renderQuestion(currentQuestion);
-        replenishQueue(currentSection);
-        return;
-      }
 
       loadingText.innerText = "⚡ AI 即時生成題目中 ...";
       streamPreview.innerText = "";
       loadingEl.style.display = 'flex';
 
-      try {
-        currentQuestion = await streamFetchQuestion(currentSection, (textChunk) => {
-          streamPreview.innerText = textChunk;
-          streamPreview.scrollTop = streamPreview.scrollHeight;
-        });
+      let attempts = 0;
+      const maxAttempts = 3;
+      let success = false;
 
-        renderQuestion(currentQuestion);
-        replenishQueue(currentSection);
-      } catch (err) {
-        console.error("生成題目失敗：", err);
-        // 此處已改為全螢幕居中的自訂彈窗
-        showCustomError("AI 題目生成稍微卡住了，請稍等片刻後重試！");
-      } finally {
-        loadingEl.style.display = 'none';
+      while (attempts < maxAttempts && !success) {
+        try {
+          attempts++;
+          currentQuestion = await streamFetchQuestion(currentSection, (textChunk) => {
+            streamPreview.innerText = textChunk;
+            streamPreview.scrollTop = streamPreview.scrollHeight;
+          });
+          
+          renderQuestion(currentQuestion);
+          success = true;
+        } catch (err) {
+          console.warn(`生成嘗試 ${attempts} 失敗:`, err);
+          if (err.message === "429" && attempts < maxAttempts) {
+            loadingText.innerText = `⏳ 請求較頻繁，等待重試中 (${attempts}/${maxAttempts})...`;
+            await new Promise(r => setTimeout(r, 2000 * attempts));
+          } else {
+            if (attempts >= maxAttempts) {
+              showCustomError("伺服器繁忙 (429 Too Many Requests)，請稍候 5~10 秒後再點選「換一題」！");
+            }
+          }
+        }
       }
+
+      loadingEl.style.display = 'none';
+      if (changeBtn) changeBtn.disabled = false;
+      isFetching = false;
     }
 
     function renderQuestion(q) {
