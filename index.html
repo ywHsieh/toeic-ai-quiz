@@ -57,7 +57,6 @@
     .badge-l { background-color: #DBEAFE; color: #1E40AF; }
     .badge-r { background-color: #FEF3C7; color: #92400E; }
 
-    .part1-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 8px; margin-bottom: 16px; }
     .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.6; margin-bottom: 14px; white-space: pre-line; }
     
     .audio-control-bar {
@@ -204,12 +203,11 @@
         <button onclick="fetchNewQuestionFromAI()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #D1D5DB; background: white;">🔄 換一題</button>
       </div>
 
-      <img id="question-img" class="part1-image" src="" alt="Part 1 照片" style="display:none;" />
       <div id="passage-box" class="passage-box" style="display:none;"></div>
 
       <div id="audio-control-container" class="audio-control-bar" style="display:none;">
         <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()">
-          🔊 點擊播放聽力語音
+          🔊 點擊播放聽力語音 (TTS)
         </button>
         <select id="playback-speed" class="speed-select">
           <option value="0.75">0.75x 慢速</option>
@@ -372,28 +370,25 @@
       }
     }
 
-    // 輔助函式：延遲指定毫秒
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // 自動重試 Request (含 429 處理)
     async function fetchWithRetry(url, options, maxRetries = 3) {
-      let delay = 2000; // 首次重試等待 2 秒
+      let delay = 2000;
       const loadingText = document.getElementById('loading-text');
 
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
           const response = await fetch(url, options);
 
-          // 若碰到 429 (Too Many Requests) 或是伺服器錯誤 503
           if (response.status === 429 || response.status === 503) {
             if (attempt < maxRetries) {
               const waitSeconds = Math.ceil(delay / 1000);
               for (let sec = waitSeconds; sec > 0; sec--) {
-                loadingText.innerText = `⏳ AI 努力生成題目中，${sec} 秒後自動重試... (${attempt + 1}/${maxRetries})`;
+                loadingText.innerText = `⏳ 伺服器忙碌中 (429)，${sec} 秒後自動重試... (${attempt + 1}/${maxRetries})`;
                 await sleep(1000);
               }
-              delay *= 2; // 時間加倍 (2s -> 4s -> 8s)
-              loadingText.innerText = `⚡ 正在努力生成題目中...`;
+              delay *= 2;
+              loadingText.innerText = `⚡ 正在重新嘗試取得題目...`;
               continue;
             }
           }
@@ -420,7 +415,8 @@
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
 
-      const parts = currentSection === 'listening' ? ['p1', 'p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
+      // 聽力題型只隨機抽取 p2, p3, p4 (已移除 p1 照片題)
+      const parts = currentSection === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
       const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
       try {
@@ -443,7 +439,7 @@
         renderQuestion(currentQuestion);
       } catch (err) {
         console.error("解析失敗詳情：", err);
-        alert(`AI 努力生成題目中，建議休息 1 分鐘後再繼續練習！`);
+        alert(`生成失敗：${err.message}\n如果持續出現 429 錯誤，建議稍微休息 1 分鐘後再試！`);
       } finally {
         loadingEl.style.display = 'none';
       }
@@ -454,14 +450,6 @@
 
       document.getElementById('part-badge').innerText = q.partName;
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
-
-      const qImg = document.getElementById('question-img');
-      if (q.imageUrl && q.part === 'p1') {
-        qImg.src = q.imageUrl;
-        qImg.style.display = 'block';
-      } else {
-        qImg.style.display = 'none';
-      }
 
       const passageBox = document.getElementById('passage-box');
       if (q.passage) {
