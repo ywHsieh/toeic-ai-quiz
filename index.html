@@ -170,6 +170,23 @@
       z-index: 10; text-align: center; padding: 20px;
     }
 
+    /* 串流實時文字區域 */
+    .stream-preview {
+      font-family: monospace;
+      font-size: 12px;
+      color: #64748B;
+      margin-top: 12px;
+      max-height: 100px;
+      overflow-y: auto;
+      text-align: left;
+      width: 100%;
+      background: #F1F5F9;
+      padding: 8px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
     /* 個人紀錄頁面樣式 */
     .profile-header {
       display: flex;
@@ -206,6 +223,7 @@
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
         <div id="loading-text">⚡ AI 生成題目中，請耐心等候...</div>
+        <div id="stream-preview" class="stream-preview"></div>
       </div>
 
       <div class="part-header">
@@ -273,12 +291,12 @@
     let currentQuestion = null;
     let isAnswered = false;
 
-    // 背景題目預載佇列 (Queue)
+    // 將 MAX_QUEUE_SIZE 降為 1 降低併發
+    const MAX_QUEUE_SIZE = 1;
     const questionQueue = {
       listening: [],
       reading: []
     };
-    const MAX_QUEUE_SIZE = 2;
     let isFetchingQueue = false;
 
     // 本地紀錄資料結構
@@ -296,14 +314,13 @@
       fetchNewQuestionFromAI();
     };
 
-    // 格式化文字：處理換行與結構呈現
     function formatText(str) {
       if (!str) return '';
       let formatted = str
         .replace(/\\n/g, '\n')
         .replace(/(題目解析|考點說明|情境說明)[:：]?/gi, '\n<strong>💡 $1：</strong>\n')
         .replace(/(選項解析)[:：]?/gi, '\n<strong>🔍 $1：</strong>\n')
-        .replace(/(\([A-D]\))/g, '\n$1'); // 選項字母自動換行
+        .replace(/(\([A-D]\))/g, '\n$1');
 
       return formatted.trim().replace(/\n/g, '<br>');
     }
@@ -347,7 +364,6 @@
       }
     }
 
-    // 移除錯題邏輯：根據題目內容搜尋並刪除
     function removeWrongQuestionByContent(q) {
       const targetIndex = wrongBook.findIndex(item => item.question === q.question);
       if (targetIndex !== -1) {
@@ -372,7 +388,7 @@
 
       container.innerHTML = wrongBook.map((q, index) => `
         <div class="wrong-item">
-          <div class="wrong-info"><strong>[${q.partName}]</strong> ${q.question}</div>
+          <div class="wrong-info"><strong>[${q.partName || '多益題目'}]</strong> ${q.question}</div>
           <div style="display: flex; gap: 6px;">
             <button class="btn-sm btn-review" onclick="reviewWrongQuestion(${index})">複習</button>
             <button class="btn-sm btn-remove" onclick="removeWrongQuestion(${index})">刪除</button>
@@ -423,79 +439,80 @@
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    async function fetchWithRetry(url, options, maxRetries = 3) {
-      let delay = 2000;
-      const loadingText = document.getElementById('loading-text');
+    // 使用 Streaming (串流) 方式請求 API 題目
+    async function streamFetchQuestion(sec, onChunk) {
+      // 聽力全面移除 p1 照片題，改為 p2, p3, p4
+      const parts = sec === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
+      const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          const response = await fetch(url, options);
+      const response = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentSection: sec, randomPart })
+      });
 
-          if (response.status === 429 || response.status === 503) {
-            if (attempt < maxRetries) {
-              const waitSeconds = Math.ceil(delay / 1000);
-              for (let sec = waitSeconds; sec > 0; sec--) {
-                if (loadingText) loadingText.innerText = `⚡ AI 生成題目中，請耐心等候...`;
-                await sleep(1000);
+      if (!response.ok) {
+        throw new Error(`伺服器回應錯誤 (Status: ${response.status})`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const parsed = JSON.parse(line.slice(6));
+              if (parsed.text) {
+                accumulatedText += parsed.text;
+                if (onChunk) onChunk(accumulatedText);
               }
-              delay *= 2;
-              if (loadingText) loadingText.innerText = `⚡ 正在重新嘗試取得題目...`;
-              continue;
+            } catch (e) {
+              // 忽略解析錯誤的碎片
             }
           }
-
-          return response;
-        } catch (err) {
-          if (attempt < maxRetries) {
-            await sleep(delay);
-            delay *= 2;
-            continue;
-          }
-          throw err;
         }
       }
+
+      // 清理可能的 Markdown 語法標示，嘗試解析成完整 JSON
+      let cleanJsonStr = accumulatedText.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+      return JSON.parse(cleanJsonStr);
     }
 
+    // 增加時間間隔以防止 429 Limit
     async function replenishQueue(sec) {
       if (questionQueue[sec].length >= MAX_QUEUE_SIZE || isFetchingQueue) return;
       
       isFetchingQueue = true;
-      const parts = sec === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
-      const randomPart = parts[Math.floor(Math.random() * parts.length)];
-
       try {
-        const response = await fetchWithRetry(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currentSection: sec, randomPart })
-        });
-
-        const data = await response.json();
-        if (response.ok && !data.error) {
-          let rawJsonStr = data.candidates[0].content.parts[0].text;
-          rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-          const parsedQ = JSON.parse(rawJsonStr);
-          
-          questionQueue[sec].push(parsedQ);
-        }
+        // 設定 6 秒冷卻時間才觸發預載，減輕發送頻率
+        await sleep(6000);
+        const parsedQ = await streamFetchQuestion(sec);
+        questionQueue[sec].push(parsedQ);
       } catch (err) {
         console.warn("背景預載題目失敗：", err);
       } finally {
         isFetchingQueue = false;
-        if (questionQueue[sec].length < MAX_QUEUE_SIZE) {
-          replenishQueue(sec);
-        }
       }
     }
 
     async function fetchNewQuestionFromAI() {
       const loadingEl = document.getElementById('loading');
       const loadingText = document.getElementById('loading-text');
+      const streamPreview = document.getElementById('stream-preview');
       
       document.getElementById('analysis-box').style.display = 'none';
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
 
+      // 若佇列有預載題目則直接快取讀取
       if (questionQueue[currentSection].length > 0) {
         currentQuestion = questionQueue[currentSection].shift();
         renderQuestion(currentQuestion);
@@ -503,35 +520,21 @@
         return;
       }
 
-      loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
+      loadingText.innerText = "⚡ AI 即時生成題目中 ( Streaming )...";
+      streamPreview.innerText = "";
       loadingEl.style.display = 'flex';
 
-      const parts = currentSection === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
-      const randomPart = parts[Math.floor(Math.random() * parts.length)];
-
       try {
-        const response = await fetchWithRetry(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currentSection, randomPart })
+        currentQuestion = await streamFetchQuestion(currentSection, (textChunk) => {
+          streamPreview.innerText = textChunk;
+          streamPreview.scrollTop = streamPreview.scrollHeight;
         });
 
-        const data = await response.json();
-
-        if (!response.ok || data.error) {
-          throw new Error(data.error || "中繼站回應異常");
-        }
-
-        let rawJsonStr = data.candidates[0].content.parts[0].text;
-        rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-
-        currentQuestion = JSON.parse(rawJsonStr);
         renderQuestion(currentQuestion);
-
         replenishQueue(currentSection);
       } catch (err) {
-        console.error("解析失敗詳情：", err);
-        alert(`AI 努力生成題目中，建議稍微休息 1 分鐘後再試！`);
+        console.error("生成題目失敗：", err);
+        alert(`AI 題目生成稍微卡住了，請稍等片刻後重試！`);
       } finally {
         loadingEl.style.display = 'none';
       }
@@ -540,7 +543,7 @@
     function renderQuestion(q) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      document.getElementById('part-badge').innerText = q.partName;
+      document.getElementById('part-badge').innerText = q.partName || (q.section === 'listening' ? '聽力測驗' : '閱讀測驗');
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
 
       const passageBox = document.getElementById('passage-box');
@@ -587,7 +590,7 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      const rawScript = currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || currentQuestion.passage || currentQuestion.question;
+      const rawScript = currentQuestion.audioScript || currentQuestion.script || currentQuestion.passage || currentQuestion.question;
 
       const lines = rawScript.split(/\r?\n/).filter(line => line.trim() !== '');
 
@@ -653,10 +656,8 @@
 
       let removedFromWrongBook = false;
       if (!isCorrect) {
-        // 答錯時加入錯題本
         saveWrongQuestion(currentQuestion);
       } else {
-        // 答對時：若該題原本存在於錯題本中，將其自動移除
         const existsInWrongBook = wrongBook.some(item => item.question === currentQuestion.question);
         if (existsInWrongBook) {
           removeWrongQuestionByContent(currentQuestion);
@@ -677,7 +678,7 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
-      let scriptContent = currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || (currentQuestion.section === 'listening' ? currentQuestion.passage : null);
+      let scriptContent = currentQuestion.audioScript || currentQuestion.script || (currentQuestion.section === 'listening' ? currentQuestion.passage : null);
 
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && scriptContent) {
@@ -694,12 +695,11 @@
       let translationHtml = '';
       if (currentQuestion.translation) {
         let cleanTrans = formatText(currentQuestion.translation.replace(/【[^】]+】/g, '').trim());
-        let qTranslation = currentQuestion.questionTranslation ? `\n\n<strong>題目翻譯：</strong>\n${formatText(currentQuestion.questionTranslation)}` : '';
 
         translationHtml = `
           <div class="translation-box" style="margin-bottom: 16px;">
-            <div style="font-weight:bold; color:#92400E; margin-bottom:6px;">🌐 中文完整逐字翻譯：</div>
-            <div>${cleanTrans}${qTranslation}</div>
+            <div style="font-weight:bold; color:#92400E; margin-bottom:6px;">🌐 中文對照翻譯：</div>
+            <div>${cleanTrans}</div>
           </div>
         `;
       }
@@ -730,7 +730,6 @@
       const rawExplanation = (currentQuestion.explanation || '').replace(/【[^】]+】/g, '').trim();
       const formattedExplanation = formatText(rawExplanation);
 
-      // 設定答題結果提示文字（增加已從錯題本移除的友善提示）
       let statusText = isCorrect ? '🎉 回答正確！' : '❌ 答錯囉！正確答案是：' + ['(A)', '(B)', '(C)', '(D)'][currentQuestion.answer];
       if (removedFromWrongBook) {
         statusText += ' ✨ (此題已從錯題本中移除)';
