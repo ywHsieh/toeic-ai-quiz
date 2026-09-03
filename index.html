@@ -192,7 +192,6 @@
       <button class="sec-tab" onclick="selectSection('profile')">📊 個人紀錄</button>
     </div>
 
-    <!-- 刷題卡片 -->
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
         <div id="loading-text">⚡ AI 生成題目中，請耐心等候...</div>
@@ -223,7 +222,6 @@
       <button class="next-btn" id="next-btn" onclick="fetchNewQuestionFromAI()">下一題👉</button>
     </div>
 
-    <!-- 個人紀錄與錯題本卡片 -->
     <div class="profile-card" id="profile-card" style="display: none;">
       <h3 style="margin-top: 0; color: #1E293B; font-size: 18px;">📊 我的個人紀錄</h3>
       
@@ -260,6 +258,14 @@
     let currentSection = 'listening';
     let currentQuestion = null;
     let isAnswered = false;
+
+    // 背景題目預載佇列 (Queue)
+    const questionQueue = {
+      listening: [],
+      reading: []
+    };
+    const MAX_QUEUE_SIZE = 2; // 背景最多預存 2 題
+    let isFetchingQueue = false;
 
     // 本地紀錄資料結構
     let userStats = JSON.parse(localStorage.getItem('toeic_stats')) || { total: 0, correct: 0 };
@@ -384,11 +390,11 @@
             if (attempt < maxRetries) {
               const waitSeconds = Math.ceil(delay / 1000);
               for (let sec = waitSeconds; sec > 0; sec--) {
-                loadingText.innerText = `⚡ AI 生成題目中，請耐心等候...`;
+                if (loadingText) loadingText.innerText = `⚡ AI 生成題目中，請耐心等候...`;
                 await sleep(1000);
               }
               delay *= 2;
-              loadingText.innerText = `⚡ 正在重新嘗試取得題目...`;
+              if (loadingText) loadingText.innerText = `⚡ 正在重新嘗試取得題目...`;
               continue;
             }
           }
@@ -405,17 +411,61 @@
       }
     }
 
+    // 核心優化：背景非同步自動補充題目池
+    async function replenishQueue(sec) {
+      if (questionQueue[sec].length >= MAX_QUEUE_SIZE || isFetchingQueue) return;
+      
+      isFetchingQueue = true;
+      const parts = sec === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
+      const randomPart = parts[Math.floor(Math.random() * parts.length)];
+
+      try {
+        const response = await fetchWithRetry(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentSection: sec, randomPart })
+        });
+
+        const data = await response.json();
+        if (response.ok && !data.error) {
+          let rawJsonStr = data.candidates[0].content.parts[0].text;
+          rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+          const parsedQ = JSON.parse(rawJsonStr);
+          
+          questionQueue[sec].push(parsedQ);
+        }
+      } catch (err) {
+        console.warn("背景預載題目失敗：", err);
+      } finally {
+        isFetchingQueue = false;
+        // 若庫存尚未額滿，持續遞迴預載
+        if (questionQueue[sec].length < MAX_QUEUE_SIZE) {
+          replenishQueue(sec);
+        }
+      }
+    }
+
     async function fetchNewQuestionFromAI() {
       const loadingEl = document.getElementById('loading');
       const loadingText = document.getElementById('loading-text');
-      loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
-      loadingEl.style.display = 'flex';
       
       document.getElementById('analysis-box').style.display = 'none';
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
 
-      // 聽力題型抽取 p2, p3, p4
+      // 1. 優先從佇列 (Cache) 取出已生成好的題目
+      if (questionQueue[currentSection].length > 0) {
+        currentQuestion = questionQueue[currentSection].shift();
+        renderQuestion(currentQuestion);
+        // 取走題目後，立刻觸發背景補貨
+        replenishQueue(currentSection);
+        return;
+      }
+
+      // 2. 佇列空了（如初次載入或連續換題），才顯示 Loading 動畫
+      loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
+      loadingEl.style.display = 'flex';
+
       const parts = currentSection === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
       const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
@@ -437,6 +487,9 @@
 
         currentQuestion = JSON.parse(rawJsonStr);
         renderQuestion(currentQuestion);
+
+        // 成功載入題目後，觸發背景預載下一題
+        replenishQueue(currentSection);
       } catch (err) {
         console.error("解析失敗詳情：", err);
         alert(`AI 努力生成題目中，建議稍微休息 1 分鐘後再試！`);
