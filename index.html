@@ -111,9 +111,8 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      line-height: 1.7;
+      line-height: 1.6;
       font-size: 13.5px;
-      white-space: pre-line;
     }
 
     .translation-box {
@@ -122,10 +121,9 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      line-height: 1.7;
+      line-height: 1.6;
       font-size: 13.5px;
       color: #78350F;
-      white-space: pre-line;
     }
 
     .analysis-section {
@@ -134,13 +132,12 @@
       background: #FFFFFF;
       border-radius: 8px;
       border: 1px solid #E5E7EB;
-      line-height: 1.7;
     }
 
     .analysis-title {
       font-weight: bold;
       color: #1F2937;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -170,22 +167,6 @@
       z-index: 10; text-align: center; padding: 20px;
     }
 
-    .stream-preview {
-      font-family: monospace;
-      font-size: 12px;
-      color: #64748B;
-      margin-top: 12px;
-      max-height: 100px;
-      overflow-y: auto;
-      text-align: left;
-      width: 100%;
-      background: #F1F5F9;
-      padding: 8px;
-      border-radius: 6px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
     .profile-header {
       display: flex;
       justify-content: space-between;
@@ -206,7 +187,7 @@
     .btn-reset-all { background: #DC2626; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
     .btn-reset-all:hover { opacity: 0.9; }
 
-    /* 通用置中 Modal 彈窗樣式 */
+    /* 全面客製化網頁置中 Modal */
     .custom-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -265,19 +246,19 @@
     <h1>🤖 A Jun 多益練習</h1>
 
     <div class="section-tabs">
-      <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力練習</button>
-      <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀練習</button>
+      <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力題型</button>
+      <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀題型</button>
       <button class="sec-tab" onclick="selectSection('profile')">📊 個人紀錄</button>
     </div>
 
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
         <div id="loading-text">⚡ AI 生成題目中，請耐心等候...</div>
-        <div id="stream-preview" class="stream-preview"></div>
       </div>
 
       <div class="part-header">
         <span id="part-badge" class="badge badge-l">Part --</span>
+        <button onclick="fetchNewQuestionFromAI()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #D1D5DB; background: white;">🔄 換一題</button>
       </div>
 
       <div id="passage-box" class="passage-box" style="display:none;"></div>
@@ -303,7 +284,7 @@
     <div class="profile-card" id="profile-card" style="display: none;">
       <div class="profile-header">
         <h3 style="margin: 0; color: #1E293B; font-size: 18px;">📊 我的個人紀錄</h3>
-        <button onclick="resetAllStats()" class="btn-reset-all">🗑️ 清空所有個人紀錄</button>
+        <button onclick="resetAllStats()" class="btn-reset-all">🗑️ 清除所有個人紀錄</button>
       </div>
       
       <div class="stats-grid">
@@ -333,7 +314,7 @@
 
   </div>
 
-  <!-- 置中通用 Modal 彈窗結構 -->
+  <!-- 置中通用 Modal 彈窗 -->
   <div id="custom-modal" class="custom-modal-overlay" style="display: none;">
     <div class="custom-modal-card">
       <div class="custom-modal-icon" id="modal-icon">⚠️</div>
@@ -365,7 +346,7 @@
       fetchNewQuestionFromAI();
     };
 
-    // 置中 Alert 彈窗（單按鈕）
+    // 單按鈕提示 Modal
     function showCustomError(message, title = "系統提示", icon = "⚠️") {
       document.getElementById('modal-icon').innerText = icon;
       document.getElementById('modal-title').innerText = title;
@@ -376,7 +357,7 @@
       document.getElementById('custom-modal').style.display = 'flex';
     }
 
-    // 置中 Confirm 彈窗（雙按鈕）
+    // 雙按鈕 Confirm Modal
     function showConfirmModal(message, title = "確認操作", icon = "❓") {
       return new Promise((resolve) => {
         document.getElementById('modal-icon').innerText = icon;
@@ -407,13 +388,7 @@
 
     function formatText(str) {
       if (!str) return '';
-      let formatted = str
-        .replace(/\\n/g, '\n')
-        .replace(/(題目解析|考點說明|情境說明)[:：]?/gi, '\n<strong>💡 $1：</strong>\n')
-        .replace(/(選項解析)[:：]?/gi, '\n<strong>🔍 $1：</strong>\n')
-        .replace(/(\([A-D]\))/g, '\n$1');
-
-      return formatted.trim().replace(/\n/g, '<br>');
+      return str.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
     }
 
     function selectSection(sec) {
@@ -452,14 +427,6 @@
     function saveWrongQuestion(q) {
       if (!wrongBook.some(item => item.question === q.question)) {
         wrongBook.unshift(q);
-        localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
-      }
-    }
-
-    function removeWrongQuestionByContent(q) {
-      const targetIndex = wrongBook.findIndex(item => item.question === q.question);
-      if (targetIndex !== -1) {
-        wrongBook.splice(targetIndex, 1);
         localStorage.setItem('toeic_wrong_book', JSON.stringify(wrongBook));
       }
     }
@@ -511,7 +478,7 @@
       renderProfile();
     }
 
-    // 將原本原生 confirm 替換為置中 Confirm Modal
+    // 改用置中 Modal
     async function clearWrongBook() {
       const confirmed = await showConfirmModal("確定要清空所有錯題紀錄嗎？此動作無法復原。", "清空錯題本");
       if (confirmed) {
@@ -521,7 +488,7 @@
       }
     }
 
-    // 將原本原生 confirm 替換為置中 Confirm Modal
+    // 改用置中 Modal
     async function resetAllStats() {
       const confirmed = await showConfirmModal("確定要將所有練習數據與錯題紀錄全部清零嗎？此動作無法復原。", "清空所有紀錄");
       if (confirmed) {
@@ -533,94 +500,55 @@
       }
     }
 
-    async function streamFetchQuestion(sec, onChunk) {
-      const parts = sec === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
-      const randomPart = parts[Math.floor(Math.random() * parts.length)];
-
-      const response = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentSection: sec, randomPart })
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) throw new Error("429");
-        throw new Error(`伺服器回應錯誤 (Status: ${response.status})`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedText = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const parsed = JSON.parse(line.slice(6));
-              if (parsed.text) {
-                accumulatedText += parsed.text;
-                if (onChunk) onChunk(accumulatedText);
-              }
-            } catch (e) {}
-          }
-        }
-      }
-
-      let cleanJsonStr = accumulatedText.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-      return JSON.parse(cleanJsonStr);
-    }
-
     async function fetchNewQuestionFromAI() {
       if (isFetching) return;
       isFetching = true;
 
       const loadingEl = document.getElementById('loading');
       const loadingText = document.getElementById('loading-text');
-      const streamPreview = document.getElementById('stream-preview');
       
       document.getElementById('analysis-box').style.display = 'none';
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
 
-      loadingText.innerText = "⚡ AI 即時生成題目中 ...";
-      streamPreview.innerText = "";
+      loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
       loadingEl.style.display = 'flex';
 
-      let attempts = 0;
-      const maxAttempts = 3;
-      let success = false;
+      // 聽力題型僅採用 p2, p3, p4 (完全排除 p1 圖片題)
+      const parts = currentSection === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
+      const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
-      while (attempts < maxAttempts && !success) {
-        try {
-          attempts++;
-          currentQuestion = await streamFetchQuestion(currentSection, (textChunk) => {
-            streamPreview.innerText = textChunk;
-            streamPreview.scrollTop = streamPreview.scrollHeight;
-          });
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentSection, randomPart })
+        });
 
-          renderQuestion(currentQuestion);
-          success = true;
-        } catch (err) {
-          if (err.message === "429" && attempts < maxAttempts) {
-            const waitTime = attempts * 3000;
-            loadingText.innerText = `⏳ AI 努力生成題目中，${waitTime / 1000} 秒後自動重試...`;
-            await new Promise(r => setTimeout(r, waitTime));
-          } else {
-            if (attempts >= maxAttempts) {
-              showCustomError("AI 努力生成中，請稍候再重新整理產生題目...");
-            }
-          }
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+          throw new Error(data.error || "中繼站回應異常");
         }
-      }
 
-      loadingEl.style.display = 'none';
-      isFetching = false;
+        let rawJsonStr = data.candidates[0].content.parts[0].text;
+        rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        currentQuestion = JSON.parse(rawJsonStr);
+        renderQuestion(currentQuestion);
+      } catch (err) {
+        console.error("解析失敗詳情：", err);
+        showCustomError("AI 努力生成題目中，建議稍候片刻後再試一次！", "出題提示");
+      } finally {
+        loadingEl.style.display = 'none';
+        isFetching = false;
+      }
+    }
+
+    function isPart2(q) {
+      if (!q) return false;
+      const partName = (q.partName || '').toLowerCase();
+      return partName.includes('part 2') || partName.includes('part2') || partName.includes('p2');
     }
 
     function renderQuestion(q) {
@@ -638,10 +566,9 @@
       }
 
       const audioContainer = document.getElementById('audio-control-container');
-      const isListening = (q.section === 'listening');
-      audioContainer.style.display = isListening ? 'flex' : 'none';
+      audioContainer.style.display = (q.section === 'listening') ? 'flex' : 'none';
 
-      if (isListening) {
+      if (isPart2(q)) {
         document.getElementById('question-text').innerText = "🔊 點擊播放聽力語音";
       } else {
         document.getElementById('question-text').innerText = q.question;
@@ -664,7 +591,7 @@
         optionsBox.appendChild(btn);
       });
 
-      if (isListening) {
+      if (isPart2(q)) {
         setTimeout(() => playCurrentAudio(), 300);
       }
     }
@@ -673,15 +600,18 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      const rawScript = currentQuestion.audioScript || currentQuestion.script || currentQuestion.passage || currentQuestion.question;
-      const lines = rawScript.split(/\r?\n/).filter(line => line.trim() !== '');
+      const rawScript = isPart2(currentQuestion) 
+        ? currentQuestion.question 
+        : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || currentQuestion.passage || currentQuestion.question);
+
+      const lines = rawScript.split('\n').filter(line => line.trim() !== '');
 
       const speedSelect = document.getElementById('playback-speed');
       const selectedRate = parseFloat(speedSelect.value) || 1.0;
 
       const enVoices = systemVoices.filter(v => v.lang.startsWith('en'));
-      const femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen|susan|fiona/i.test(v.name)) || enVoices[0];
-      const maleVoice = enVoices.find(v => /male|david|alex|george|daniel|james/i.test(v.name)) || enVoices[1] || enVoices[0];
+      const femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen/i.test(v.name)) || enVoices[0];
+      const maleVoice = enVoices.find(v => /male|david|alex|george|daniel/i.test(v.name)) || enVoices[1] || enVoices[0];
 
       let currentLineIndex = 0;
 
@@ -689,11 +619,12 @@
         if (currentLineIndex >= lines.length) return;
 
         const originalLine = lines[currentLineIndex++];
-        const isMan = /(^|\s|\()(man|male|speaker\s*1|m)(\b|[:：\)])/i.test(originalLine);
+        const isMan = /(^|\b)(man|male|speaker\s*1|m)(\b|[:：])/i.test(originalLine);
 
         let cleanText = originalLine
-          .replace(/^(\s*\(?\s*(man|woman|male|female|speaker\s*\d+|m|w)\s*\)?\s*[:：.-]*)/i, '')
+          .replace(/^(man|woman|speaker\s*\d+|m|w|speaker\s*[a-z])\s*[:：.-]*/i, '')
           .replace(/^[^:：]+[:：]\s*/, '')
+          .replace(/\b(man|woman|speaker\s*\d+)\b/gi, '')
           .replace(/\([^)]*\)/g, '')
           .replace(/\[[^\]]*\]/g, '')
           .trim();
@@ -716,7 +647,6 @@
         }
 
         utterance.onend = speakNextLine;
-        utterance.onerror = speakNextLine;
         window.speechSynthesis.speak(utterance);
       }
 
@@ -727,23 +657,15 @@
       if (isAnswered) return;
       isAnswered = true;
 
-      if (currentQuestion.section === 'listening') {
+      if (isPart2(currentQuestion)) {
         document.getElementById('question-text').innerText = currentQuestion.question;
       }
 
       const isCorrect = selectedIndex === currentQuestion.answer;
       
       updateStats(isCorrect);
-
-      let removedFromWrongBook = false;
       if (!isCorrect) {
         saveWrongQuestion(currentQuestion);
-      } else {
-        const existsInWrongBook = wrongBook.some(item => item.question === currentQuestion.question);
-        if (existsInWrongBook) {
-          removeWrongQuestionByContent(currentQuestion);
-          removedFromWrongBook = true;
-        }
       }
 
       const btns = document.querySelectorAll('.opt-btn');
@@ -759,7 +681,7 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
-      let scriptContent = currentQuestion.audioScript || currentQuestion.script || (currentQuestion.section === 'listening' ? currentQuestion.passage : null);
+      let scriptContent = currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || (currentQuestion.section === 'listening' ? currentQuestion.passage : null);
 
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && scriptContent) {
@@ -768,7 +690,7 @@
         transcriptHtml = `
           <div class="transcript-box" style="margin-bottom: 16px;">
             <div style="font-weight:bold; color:#1E40AF; margin-bottom:6px;">📝 聽力音檔逐字稿：</div>
-            <div>${cleanScript}</div>
+            <div style="line-height: 1.6;">${cleanScript}</div>
           </div>
         `;
       }
@@ -776,11 +698,12 @@
       let translationHtml = '';
       if (currentQuestion.translation) {
         let cleanTrans = formatText(currentQuestion.translation.replace(/【[^】]+】/g, '').trim());
+        let qTranslation = currentQuestion.questionTranslation ? `<br><br><strong>題目翻譯：</strong>${formatText(currentQuestion.questionTranslation)}` : '';
 
         translationHtml = `
           <div class="translation-box" style="margin-bottom: 16px;">
-            <div style="font-weight:bold; color:#92400E; margin-bottom:6px;">🌐 中文對照翻譯：</div>
-            <div>${cleanTrans}</div>
+            <div style="font-weight:bold; color:#92400E; margin-bottom:6px;">🌐 中文完整逐字翻譯：</div>
+            <div style="line-height: 1.6;">${cleanTrans}${qTranslation}</div>
           </div>
         `;
       }
@@ -809,16 +732,15 @@
       }
 
       const rawExplanation = (currentQuestion.explanation || '').replace(/【[^】]+】/g, '').trim();
-      const formattedExplanation = formatText(rawExplanation);
-
-      let statusText = isCorrect ? '🎉 回答正確！' : '❌ 答錯囉！正確答案是：' + ['(A)', '(B)', '(C)', '(D)'][currentQuestion.answer];
-      if (removedFromWrongBook) {
-        statusText += ' ✨ (此題已從錯題本中移除)';
-      }
+      const formattedExplanation = formatText(
+        rawExplanation
+          .replace(/(題目解析|考點說明)[:：]?/g, '\n<strong>$1：</strong>\n')
+          .replace(/(選項解析)[:：]?/g, '\n\n<strong>$1：</strong>\n')
+      );
 
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
-          ${statusText}
+          ${isCorrect ? '🎉 回答正確！' : '❌ 答錯囉！正確答案是：' + ['(A)', '(B)', '(C)', '(D)'][currentQuestion.answer]}
         </div>
         
         ${transcriptHtml}
@@ -826,7 +748,7 @@
 
         <div class="analysis-section">
           <div class="analysis-title">💡 題目與選項解析：</div>
-          <div style="margin-top: 6px;">${formattedExplanation}</div>
+          <div style="line-height: 1.6; margin-top: 6px;">${formattedExplanation}</div>
         </div>
 
         ${vocabHtml}
