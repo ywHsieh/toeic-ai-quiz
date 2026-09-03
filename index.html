@@ -511,13 +511,14 @@
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
 
       const passageBox = document.getElementById('passage-box');
-      if (q.passage) {
+      if (q.passage && q.section !== 'listening') {
         passageBox.style.display = 'block';
         passageBox.innerHTML = q.passage.replace(/\n/g, '<br>');
       } else {
         passageBox.style.display = 'none';
       }
 
+      // 只要是 listening 題型，就顯示語音播放區塊
       const audioContainer = document.getElementById('audio-control-container');
       audioContainer.style.display = (q.section === 'listening') ? 'flex' : 'none';
 
@@ -548,10 +549,10 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      // Part 2 僅朗讀題目內容，忽略選項與對話腳本
+      // 相容 audioScript / script / conversation / passage / question
       const rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
-        : (currentQuestion.audioScript || currentQuestion.question);
+        : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || currentQuestion.passage || currentQuestion.question);
 
       const lines = rawScript.split('\n').filter(line => line.trim() !== '');
 
@@ -606,7 +607,6 @@
       if (isAnswered) return;
       isAnswered = true;
 
-      // 答題後顯示 Part 2 的完整題目文字
       if (isPart2(currentQuestion)) {
         document.getElementById('question-text').innerText = currentQuestion.question;
       }
@@ -631,10 +631,12 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
-      // 1. 聽力音檔逐字稿區塊
+      // 多相容欄位提取逐字稿
+      let scriptContent = currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || (currentQuestion.section === 'listening' ? currentQuestion.passage : null);
+
       let transcriptHtml = '';
-      if (currentQuestion.section === 'listening' && currentQuestion.audioScript) {
-        let cleanScript = currentQuestion.audioScript
+      if (currentQuestion.section === 'listening' && scriptContent) {
+        let cleanScript = scriptContent
           .replace(/【[^】]+】/g, '')
           .trim()
           .replace(/\n/g, '<br>');
@@ -647,7 +649,6 @@
         `;
       }
 
-      // 2. 中文完整逐字翻譯 + 題目與選項翻譯
       let translationHtml = '';
       if (currentQuestion.translation) {
         let cleanTrans = currentQuestion.translation
@@ -665,7 +666,6 @@
         `;
       }
 
-      // 3. 多益重要單字區塊
       let vocabHtml = '';
       if (currentQuestion.vocabularies && currentQuestion.vocabularies.length > 0) {
         let rows = currentQuestion.vocabularies.map(v => `
@@ -689,7 +689,6 @@
         `;
       }
 
-      // 4. 題目與選項解析（自動美化換行）
       const formattedExplanation = (currentQuestion.explanation || '')
         .replace(/【[^】]+】/g, '')
         .trim()
