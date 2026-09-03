@@ -111,8 +111,9 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      line-height: 1.6;
+      line-height: 1.7;
       font-size: 13.5px;
+      white-space: pre-line;
     }
 
     .translation-box {
@@ -121,9 +122,10 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      line-height: 1.6;
+      line-height: 1.7;
       font-size: 13.5px;
       color: #78350F;
+      white-space: pre-line;
     }
 
     .analysis-section {
@@ -132,12 +134,13 @@
       background: #FFFFFF;
       border-radius: 8px;
       border: 1px solid #E5E7EB;
+      line-height: 1.7;
     }
 
     .analysis-title {
       font-weight: bold;
       color: #1F2937;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -195,8 +198,8 @@
     <h1>🤖 A Jun 多益練習</h1>
 
     <div class="section-tabs">
-      <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力題型</button>
-      <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀題型</button>
+      <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力練習</button>
+      <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀練習</button>
       <button class="sec-tab" onclick="selectSection('profile')">📊 個人紀錄</button>
     </div>
 
@@ -275,7 +278,7 @@
       listening: [],
       reading: []
     };
-    const MAX_QUEUE_SIZE = 2; // 背景最多預存 2 題
+    const MAX_QUEUE_SIZE = 2;
     let isFetchingQueue = false;
 
     // 本地紀錄資料結構
@@ -293,10 +296,16 @@
       fetchNewQuestionFromAI();
     };
 
-    // 格式化文字，將原本字面值的 \n 轉為 <br>
+    // 格式化文字：處理換行與結構呈現
     function formatText(str) {
       if (!str) return '';
-      return str.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+      let formatted = str
+        .replace(/\\n/g, '\n')
+        .replace(/(題目解析|考點說明|情境說明)[:：]?/gi, '\n<strong>💡 $1：</strong>\n')
+        .replace(/(選項解析)[:：]?/gi, '\n<strong>🔍 $1：</strong>\n')
+        .replace(/(\([A-D]\))/g, '\n$1'); // 選項字母自動換行
+
+      return formatted.trim().replace(/\n/g, '<br>');
     }
 
     function selectSection(sec) {
@@ -393,7 +402,6 @@
       }
     }
 
-    // 重置所有統計與紀錄（全部清零）
     function resetAllStats() {
       if (confirm("確定要將所有練習數據與錯題紀錄全部清零嗎？此動作無法復原。")) {
         userStats = { total: 0, correct: 0 };
@@ -520,12 +528,6 @@
       }
     }
 
-    function isPart2(q) {
-      if (!q) return false;
-      const partName = (q.partName || '').toLowerCase();
-      return partName.includes('part 2') || partName.includes('part2') || partName.includes('p2');
-    }
-
     function renderQuestion(q) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -541,9 +543,11 @@
       }
 
       const audioContainer = document.getElementById('audio-control-container');
-      audioContainer.style.display = (q.section === 'listening') ? 'flex' : 'none';
+      const isListening = (q.section === 'listening');
+      audioContainer.style.display = isListening ? 'flex' : 'none';
 
-      if (isPart2(q)) {
+      // 修改重點 1：所有聽力題型的題目預設皆為音檔播放（不直接顯示文字題目）
+      if (isListening) {
         document.getElementById('question-text').innerText = "🔊 點擊播放聽力語音";
       } else {
         document.getElementById('question-text').innerText = q.question;
@@ -557,7 +561,6 @@
         const btn = document.createElement('button');
         btn.className = 'opt-btn';
         
-        // 檢查選項字串是否已帶有 (A)/(B) 標籤，若無則自動補上
         let cleanOptText = opt.trim();
         const hasPrefix = /^\([A-D]\)/i.test(cleanOptText);
         const prefix = optionLabels[i] || `(${String.fromCharCode(65 + i)})`;
@@ -567,27 +570,27 @@
         optionsBox.appendChild(btn);
       });
 
-      if (isPart2(q)) {
+      if (isListening) {
         setTimeout(() => playCurrentAudio(), 300);
       }
     }
 
+    // 修改重點 2：朗讀聲音區分男/女，且不唸出 Man:, Woman:, (M) 等文字
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      const rawScript = isPart2(currentQuestion) 
-        ? currentQuestion.question 
-        : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || currentQuestion.passage || currentQuestion.question);
+      const rawScript = currentQuestion.audioScript || currentQuestion.script || currentQuestion.conversation || currentQuestion.passage || currentQuestion.question;
 
-      const lines = rawScript.split('\n').filter(line => line.trim() !== '');
+      // 切分逐行朗讀
+      const lines = rawScript.split(/\r?\n/).filter(line => line.trim() !== '');
 
       const speedSelect = document.getElementById('playback-speed');
       const selectedRate = parseFloat(speedSelect.value) || 1.0;
 
       const enVoices = systemVoices.filter(v => v.lang.startsWith('en'));
-      const femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen/i.test(v.name)) || enVoices[0];
-      const maleVoice = enVoices.find(v => /male|david|alex|george|daniel/i.test(v.name)) || enVoices[1] || enVoices[0];
+      const femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen|susan|fiona/i.test(v.name)) || enVoices[0];
+      const maleVoice = enVoices.find(v => /male|david|alex|george|daniel|james/i.test(v.name)) || enVoices[1] || enVoices[0];
 
       let currentLineIndex = 0;
 
@@ -595,12 +598,14 @@
         if (currentLineIndex >= lines.length) return;
 
         const originalLine = lines[currentLineIndex++];
-        const isMan = /(^|\b)(man|male|speaker\s*1|m)(\b|[:：])/i.test(originalLine);
+        
+        // 判斷角色是否為男性
+        const isMan = /(^|\s|\()(man|male|speaker\s*1|m)(\b|[:：\)])/i.test(originalLine);
 
+        // 徹底濾除角色名稱及標籤，只保留朗讀內容
         let cleanText = originalLine
-          .replace(/^(man|woman|speaker\s*\d+|m|w|speaker\s*[a-z])\s*[:：.-]*/i, '')
+          .replace(/^(\s*\(?\s*(man|woman|male|female|speaker\s*\d+|m|w)\s*\)?\s*[:：.-]*)/i, '')
           .replace(/^[^:：]+[:：]\s*/, '')
-          .replace(/\b(man|woman|speaker\s*\d+)\b/gi, '')
           .replace(/\([^)]*\)/g, '')
           .replace(/\[[^\]]*\]/g, '')
           .trim();
@@ -614,15 +619,17 @@
         utterance.lang = 'en-US';
         utterance.rate = selectedRate;
 
+        // 男女生音色與音調設定
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
-          utterance.pitch = 0.85;
+          utterance.pitch = 0.85; // 音調較低
         } else {
           if (femaleVoice) utterance.voice = femaleVoice;
-          utterance.pitch = 1.15;
+          utterance.pitch = 1.15; // 音調較高
         }
 
         utterance.onend = speakNextLine;
+        utterance.onerror = speakNextLine;
         window.speechSynthesis.speak(utterance);
       }
 
@@ -633,7 +640,8 @@
       if (isAnswered) return;
       isAnswered = true;
 
-      if (isPart2(currentQuestion)) {
+      // 答題後揭示文字題目
+      if (currentQuestion.section === 'listening') {
         document.getElementById('question-text').innerText = currentQuestion.question;
       }
 
@@ -666,7 +674,7 @@
         transcriptHtml = `
           <div class="transcript-box" style="margin-bottom: 16px;">
             <div style="font-weight:bold; color:#1E40AF; margin-bottom:6px;">📝 聽力音檔逐字稿：</div>
-            <div style="line-height: 1.6;">${cleanScript}</div>
+            <div>${cleanScript}</div>
           </div>
         `;
       }
@@ -674,12 +682,12 @@
       let translationHtml = '';
       if (currentQuestion.translation) {
         let cleanTrans = formatText(currentQuestion.translation.replace(/【[^】]+】/g, '').trim());
-        let qTranslation = currentQuestion.questionTranslation ? `<br><br><strong>題目翻譯：</strong>${formatText(currentQuestion.questionTranslation)}` : '';
+        let qTranslation = currentQuestion.questionTranslation ? `\n\n<strong>題目翻譯：</strong>\n${formatText(currentQuestion.questionTranslation)}` : '';
 
         translationHtml = `
           <div class="translation-box" style="margin-bottom: 16px;">
             <div style="font-weight:bold; color:#92400E; margin-bottom:6px;">🌐 中文完整逐字翻譯：</div>
-            <div style="line-height: 1.6;">${cleanTrans}${qTranslation}</div>
+            <div>${cleanTrans}${qTranslation}</div>
           </div>
         `;
       }
@@ -707,12 +715,9 @@
         `;
       }
 
+      // 修改重點 3：解析內容自動換行優化
       const rawExplanation = (currentQuestion.explanation || '').replace(/【[^】]+】/g, '').trim();
-      const formattedExplanation = formatText(
-        rawExplanation
-          .replace(/(題目解析|考點說明)[:：]?/g, '\n<strong>$1：</strong>\n')
-          .replace(/(選項解析)[:：]?/g, '\n\n<strong>$1：</strong>\n')
-      );
+      const formattedExplanation = formatText(rawExplanation);
 
       analysisBox.innerHTML = `
         <div class="analysis-status" style="color: ${isCorrect ? '#059669' : '#DC2626'}">
@@ -724,7 +729,7 @@
 
         <div class="analysis-section">
           <div class="analysis-title">💡 題目與選項解析：</div>
-          <div style="line-height: 1.6; margin-top: 6px;">${formattedExplanation}</div>
+          <div style="margin-top: 6px;">${formattedExplanation}</div>
         </div>
 
         ${vocabHtml}
