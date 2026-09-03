@@ -207,6 +207,76 @@
     .btn-review { background: #2563EB; color: white; }
     .btn-reset-all { background: #DC2626; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
     .btn-reset-all:hover { opacity: 0.9; }
+
+    /* 自訂居中錯誤 Modal 樣式 */
+    .error-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(2px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .error-modal-card {
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      text-align: center;
+      animation: scaleUp 0.2s ease-out;
+    }
+
+    .error-modal-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+
+    .error-modal-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #991B1B;
+      margin-bottom: 8px;
+    }
+
+    .error-modal-msg {
+      font-size: 14px;
+      color: #4B5563;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .error-modal-btn {
+      width: 100%;
+      padding: 10px;
+      background: #EF4444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .error-modal-btn:hover {
+      background: #DC2626;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes scaleUp {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -284,6 +354,16 @@
 
   </div>
 
+  <!-- 自訂畫面居中錯誤訊息 Modal -->
+  <div id="error-modal" class="error-modal-overlay" style="display: none;">
+    <div class="error-modal-card">
+      <div class="error-modal-icon">⚠️</div>
+      <div class="error-modal-title">發生錯誤</div>
+      <div class="error-modal-msg" id="error-modal-text">AI 題目生成稍微卡住了，請稍等片刻後重試！</div>
+      <button class="error-modal-btn" onclick="hideCustomError()">確定</button>
+    </div>
+  </div>
+
   <script>
     const WORKER_URL = "https://toeic-ai-quiz.ellen6225.workers.dev";
 
@@ -313,6 +393,16 @@
     window.onload = () => {
       fetchNewQuestionFromAI();
     };
+
+    // 自訂居中錯誤提示彈窗顯示與關閉
+    function showCustomError(message) {
+      document.getElementById('error-modal-text').innerText = message;
+      document.getElementById('error-modal').style.display = 'flex';
+    }
+
+    function hideCustomError() {
+      document.getElementById('error-modal').style.display = 'none';
+    }
 
     function formatText(str) {
       if (!str) return '';
@@ -520,7 +610,7 @@
         return;
       }
 
-      loadingText.innerText = "⚡ AI 即時生成題目中 ( Streaming )...";
+      loadingText.innerText = "⚡ AI 即時生成題目中 ...";
       streamPreview.innerText = "";
       loadingEl.style.display = 'flex';
 
@@ -534,7 +624,8 @@
         replenishQueue(currentSection);
       } catch (err) {
         console.error("生成題目失敗：", err);
-        alert(`AI 題目生成稍微卡住了，請稍等片刻後重試！`);
+        // 此處已改為全螢幕居中的自訂彈窗
+        showCustomError("AI 題目生成稍微卡住了，請稍等片刻後重試！");
       } finally {
         loadingEl.style.display = 'none';
       }
