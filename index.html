@@ -207,7 +207,7 @@
 
       <div id="audio-control-container" class="audio-control-bar" style="display:none;">
         <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()">
-          🔊 點擊播放聽力語音 (TTS)
+          🔊 點擊播放聽力語音
         </button>
         <select id="playback-speed" class="speed-select">
           <option value="0.75">0.75x 慢速</option>
@@ -384,7 +384,7 @@
             if (attempt < maxRetries) {
               const waitSeconds = Math.ceil(delay / 1000);
               for (let sec = waitSeconds; sec > 0; sec--) {
-                loadingText.innerText = `⏳ 伺服器忙碌中 (429)，${sec} 秒後自動重試... (${attempt + 1}/${maxRetries})`;
+                loadingText.innerText = `⚡ AI 生成題目中，請耐心等候...`;
                 await sleep(1000);
               }
               delay *= 2;
@@ -415,7 +415,7 @@
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
 
-      // 聽力題型只隨機抽取 p2, p3, p4 (已移除 p1 照片題)
+      // 聽力題型抽取 p2, p3, p4
       const parts = currentSection === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
       const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
@@ -445,6 +445,12 @@
       }
     }
 
+    function isPart2(q) {
+      if (!q) return false;
+      const partName = (q.partName || '').toLowerCase();
+      return partName.includes('part 2') || partName.includes('part2') || partName.includes('p2');
+    }
+
     function renderQuestion(q) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -462,7 +468,12 @@
       const audioContainer = document.getElementById('audio-control-container');
       audioContainer.style.display = (q.section === 'listening') ? 'flex' : 'none';
 
-      document.getElementById('question-text').innerText = q.question;
+      // Part 2 聽力題目處理：預設隱藏題目文字
+      if (isPart2(q)) {
+        document.getElementById('question-text').innerText = "🔊 點擊播放聽力語音";
+      } else {
+        document.getElementById('question-text').innerText = q.question;
+      }
 
       const optionsBox = document.getElementById('options-box');
       optionsBox.innerHTML = '';
@@ -473,13 +484,22 @@
         btn.onclick = () => handleAnswer(i);
         optionsBox.appendChild(btn);
       });
+
+      // Part 2 切換題目時自動播放語音
+      if (isPart2(q)) {
+        setTimeout(() => playCurrentAudio(), 300);
+      }
     }
 
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      const rawScript = currentQuestion.audioScript || currentQuestion.question;
+      // Part 2 僅朗讀題目內容，忽略選項與對話腳本
+      const rawScript = isPart2(currentQuestion) 
+        ? currentQuestion.question 
+        : (currentQuestion.audioScript || currentQuestion.question);
+
       const lines = rawScript.split('\n').filter(line => line.trim() !== '');
 
       const speedSelect = document.getElementById('playback-speed');
@@ -532,6 +552,11 @@
     function handleAnswer(selectedIndex) {
       if (isAnswered) return;
       isAnswered = true;
+
+      // 答題後顯示 Part 2 的完整題目文字
+      if (isPart2(currentQuestion)) {
+        document.getElementById('question-text').innerText = currentQuestion.question;
+      }
 
       const isCorrect = selectedIndex === currentQuestion.answer;
       
