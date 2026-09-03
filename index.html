@@ -353,7 +353,6 @@
   <div id="custom-modal" class="custom-modal-overlay" style="display: none;">
     <div class="custom-modal-card">
       <div class="custom-modal-icon" id="modal-icon">⚠️</div>
-      <div class="custom-modal-msg" id="modal-text">提示訊息</div>
       <div class="custom-modal-actions" id="modal-actions">
         <button class="custom-modal-btn btn-confirm-danger" id="modal-confirm-btn" onclick="hideCustomModal()">確定</button>
       </div>
@@ -524,7 +523,7 @@
     }
 
     function clearWrongBook() {
-      showConfirmModal("確定要清空所有錯題紀錄嗎？", () => {
+      showConfirmModal("確定要清空所有錯題紀錄嗎？此動作無法復原。", () => {
         wrongBook = [];
         localStorage.removeItem('toeic_wrong_book');
         renderProfile();
