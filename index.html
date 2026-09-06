@@ -486,7 +486,69 @@
       ["Agenda", "n.", "議程；討論事項"], ["Compliance", "n.", "順從；合規"], ["Accommodate", "v.", "容納；提供住宿"]
     ];
 
+    // 精確且生活化、真實語境導向的單字例句字典
+    const customWordExamples = {
+      "a/an": { en: "She bought an apple and a sandwich for lunch.", cn: "她午餐買了一個蘋果和一份三明治。" },
+      "able": { en: "He was finally able to fix the broken bicycle by himself.", cn: "他終於能夠自己修好那台壞掉的腳踏車了。" },
+      "about": { en: "We talked for hours about our favorite movies and music.", cn: "我們聊了好幾個小時關於我們最喜歡的電影和音樂。" },
+      "above": { en: "The dark storm clouds hung high above the mountains.", cn: "烏黑的暴風雲高高地掛在山脈上方。" },
+      "across": { en: "They walked across the street to get some iced coffee.", cn: "他們穿過馬路去買些冰咖啡。" },
+      "act": { en: "It is important to act calmly during an emergency.", cn: "在緊急狀況下保持冷靜地採取行動非常重要。" },
+      "action": { en: "Action speaks louder than words when showing kindness.", cn: "表達善意時，行動勝於言語。" },
+      "actor": { en: "The actor gave a touching performance in the new theater play.", cn: "那位男演員在新舞台劇中帶來了感人的演出。" },
+      "actress": { en: "She won an award for her impressive role as a detective.", cn: "她因飾演女偵探一角的出色表現而獲獎。" },
+      "add": { en: "Don't forget to add a pinch of salt to the soup.", cn: "別忘了在湯裡加一小撮鹽巴。" },
+      "address": { en: "Please make sure your home address is filled in correctly.", cn: "請確保您的住家地址填寫無誤。" },
+      "adult": { en: "Ticket prices are ten dollars for adults and five for kids.", cn: "成人票價為十美元，兒童票價為五美元。" },
+      "afraid": { en: "Don't be afraid to try new things and make mistakes.", cn: "不要害怕嘗試新事物與犯錯。" },
+      "after": { en: "Let's go for a relaxing walk in the park after dinner.", cn: "我們晚餐後去公園散個步放鬆一下吧。" },
+      "afternoon": { en: "The sun usually shines brightly in the late afternoon.", cn: "傍晚時分陽光通常依然耀眼。" },
+      "again": { en: "Could you please repeat that? I didn't hear you clearly.", cn: "能請你再說一次嗎？我剛剛沒聽清楚。" },
+      "against": { en: "He leaned his old bicycle against the wooden fence.", cn: "他把舊腳踏車靠在木頭籬笆上。" },
+      "age": { en: "My grandmother started learning to paint at the age of sixty.", cn: "我祖母在六十歲時開始學習繪畫。" },
+      "ago": { en: "I met my middle school classmate at the supermarket two days ago.", cn: "我兩天前在超市遇見了我的國中同學。" },
+      "agree": { en: "We all agree to order pizza for tonight's movie party.", cn: "我們都同意今晚的電影派對要點披薩。" },
+      "ahead": { en: "Look straight ahead and watch out for pedestrian traffic.", cn: "向前直視，注意過馬路的行人。" },
+      "air": { en: "Fresh mountain air always makes me feel peaceful and clear.", cn: "清新的新鮮山區空氣總能讓我感到平靜與清爽。" },
+      "airplane": { en: "The airplane took off smoothly right on schedule.", cn: "飛機準時平穩地起飛了。" },
+      "airport": { en: "We arrived at the airport two hours before our flight.", cn: "我們在班機起飛前兩小時抵達了機場。" },
+      "allow": { en: "My parents don't allow me to stay up late on school nights.", cn: "我父母不允許我在上學日熬夜。" },
+      "almost": { en: "I am almost ready to leave for the train station.", cn: "我幾乎準備好出發去火車站了。" },
+      "alone": { en: "She enjoys spending time alone reading in cozy coffee shops.", cn: "她喜歡一個人獨處在舒適的咖啡廳裡讀書。" },
+      "along": { en: "We took a peaceful stroll along the seaside path at sunset.", cn: "傍晚時分我們沿著海邊小徑漫步。" },
+      "already": { en: "I have already finished all my homework for the week.", cn: "我已經把這週所有的作業都做完了。" },
+      "also": { en: "He plays the acoustic guitar and also writes his own songs.", cn: "他會彈木吉他，也會自己創作歌曲。" },
+      "always": { en: "She always drinks a hot cup of lemon water every morning.", cn: "她每天早晨總是會喝一杯熱檸檬水。" },
+      "among": { en: "The quiet wooden cabin is hidden among tall pine trees.", cn: "那棟安靜的小木屋隱藏在高大的松樹林之中。" },
+      "and": { en: "She bought fresh strawberries, milk, and bread at the market.", cn: "她在市場買了新鮮草莓、牛奶和麵包。" },
+      "anger": { en: "He tried to control his anger when the train was delayed.", cn: "火車延誤時，他努力克制心中的憤怒。" },
+      "angry": { en: "My roommate was angry because I forgot to turn off the lights.", cn: "我的室友很生氣，因為我忘了關燈。" },
+      "animal": { en: "Dogs and cats are among the most popular household animals.", cn: "貓和狗是最受歡迎的家養寵物之一。" },
+      "another": { en: "Would you like another slice of home-baked chocolate cake?", cn: "你想再來一片自製的巧克力蛋糕嗎？" },
+      "answer": { en: "Nobody answered the phone when I called the bakery.", cn: "我打給麵包店時沒有人接電話。" },
+      "ant": { en: "A tiny ant was carrying a breadcrumb across the kitchen counter.", cn: "一隻小小的螞蟻正搬著麵包屑穿過廚房流理台。" },
+      "any": { en: "Do you have any recommendations for good ramen restaurants nearby?", cn: "你附近有推薦什麼好吃的拉麵店嗎？" },
+      "appear": { en: "A colorful rainbow suddenly appeared after the short rain shower.", cn: "陣雨過後天空突然出現一道彩虹。" },
+      "apple": { en: "Eating an apple every morning keeps you energized.", cn: "每天早上吃一顆蘋果能讓你保持精力充沛。" },
+      "area": { en: "There are several nice public parks in this quiet residential area.", cn: "在這個安靜的住宅區裡有幾個很棒的公立公園。" },
+      "arm": { en: "He injured his left arm while playing volleyball yesterday.", cn: "他昨天打排球時左手臂受傷了。" },
+      "army": { en: "His elder brother joined the army after graduating from college.", cn: "他哥哥大學畢業後加入了陸軍。" },
+      "around": { en: "They drove slowly around the historic town to take photos.", cn: "他們開著車繞著古鎮慢行拍照。" },
+      "art": { en: "Visiting contemporary art museums is her favorite weekend activity.", cn: "參觀當代藝術博物館是她最喜歡的週末活動。" },
+      "ask": { en: "Feel free to ask the tour guide if you have any questions.", cn: "如果你有任何問題，隨時可以詢問導遊。" },
+      "Implement": { en: "The city council decided to implement a new bike-sharing system.", cn: "市議會決定引進全新的公共單車租賃系統。" },
+      "Negotiate": { en: "They managed to negotiate a reasonable rent for the apartment.", cn: "他們成功協商出一個合理的公寓租金。" },
+      "Substantial": { en: "Adding a small garden made a substantial difference to the backyard.", cn: "打造一個小花園讓後院變得大不相同。" },
+      "Agenda": { en: "What is on your agenda for this coming weekend?", cn: "你這個週末有排定什麼行程活動？" },
+      "Compliance": { en: "Wearing life jackets on the boat is essential for safety compliance.", cn: "搭船時穿著救生衣是符合安全規範的基本要求。" },
+      "Accommodate": { en: "The cozy beach house can easily accommodate up to six guests.", cn: "這棟舒適的海灘小屋可輕鬆容納最多六位房客。" }
+    };
+
     function generateToeicExample(word, pos, meaning) {
+      if (customWordExamples[word]) {
+        return customWordExamples[word];
+      }
+
       const cleanMeaning = meaning.split('；')[0].split('（')[0].replace(/[a-zA-Z0-9\.\s]/g, '');
       const lowerWord = word.toLowerCase();
       const lowerPos = (pos || '').toLowerCase().trim();
@@ -499,47 +561,47 @@
 
       if (lowerPos.startsWith('v')) {
         const templates = [
-          { en: `We need to ${lowerWord} the original plan before the client arrives.`, cn: `我們需要在客戶抵達前${cleanMeaning}原定計畫。` },
-          { en: `The management decided to ${lowerWord} new strategies to boost sales.`, cn: `管理層決定${cleanMeaning}新策略以提升銷售額。` },
-          { en: `Please ${lowerWord} the requested information by the end of the day.`, cn: `請在今天下班前${cleanMeaning}所需資訊。` },
-          { en: `She was assigned to ${lowerWord} the quarterly project proposal.`, cn: `她被指派去${cleanMeaning}季度專案企劃書。` },
-          { en: `Our team will ${lowerWord} closely with external contractors next week.`, cn: `我們團隊將在下週與外部承包商緊密${cleanMeaning}。` }
+          { en: `I always try to ${lowerWord} new recipes when cooking over the weekend.`, cn: `週末下廚時我總是試著${cleanMeaning}新食譜。` },
+          { en: `She decided to ${lowerWord} her daily routine to stay healthier.`, cn: `她決定${cleanMeaning}日常生活習慣以保持更健康。` },
+          { en: `Can you help me ${lowerWord} this old clock before we throw it out?`, cn: `在扔掉這鐘之前，你能幫我${cleanMeaning}它嗎？` },
+          { en: `They plan to ${lowerWord} their upcoming trip during dinner tonight.`, cn: `他們打算在今晚晚餐時${cleanMeaning}即將到來的旅行。` },
+          { en: `Don't hesitate to ${lowerWord} when you feel you need extra rest.`, cn: `當你覺得需要額外休息時，不要猶豫去${cleanMeaning}。` }
         ];
         return templates[choice];
       } else if (lowerPos.startsWith('adj')) {
         const templates = [
-          { en: `The company achieved a ${lowerWord} outcome in the recent audit.`, cn: `公司在近期的審計中取得了${cleanMeaning}的成果。` },
-          { en: `Please make sure that the reported data remains completely ${lowerWord}.`, cn: `請確保所呈報的數據保持絕對的${cleanMeaning}。` },
-          { en: `They offered a ${lowerWord} solution to address the customer's concerns.`, cn: `他們提出了${cleanMeaning}的解決方案來應對客戶的顧慮。` },
-          { en: `Our manager maintains a ${lowerWord} attitude toward innovation.`, cn: `我們的經理對創新保持著${cleanMeaning}的態度。` },
-          { en: `This new policy brings ${lowerWord} benefits to all employees.`, cn: `這項新政策為所有員工帶來了${cleanMeaning}的好處。` }
+          { en: `The weather turned ${lowerWord} just as we stepped out of the cafe.`, cn: `正當我們走出咖啡廳時，天氣變得相當${cleanMeaning}。` },
+          { en: `Finding a ${lowerWord} place to study in the library can be tricky.`, cn: `要在圖書館裡找到一個${cleanMeaning}的地方唸書有時不容易。` },
+          { en: `She felt ${lowerWord} after finishing her long morning workout.`, cn: `做完晨間的長時間運動後，她感到十分${cleanMeaning}。` },
+          { en: `This cozy cafe has a very ${lowerWord} atmosphere on rain days.`, cn: `這間舒適的咖啡館在下雨天有一種非常${cleanMeaning}的氛圍。` },
+          { en: `It was a ${lowerWord} experience exploring the night market for the first time.`, cn: `第一次逛夜市是一次非常${cleanMeaning}的體驗。` }
         ];
         return templates[choice];
       } else if (lowerPos.startsWith('adv')) {
         const templates = [
-          { en: `The project was completed ${lowerWord} thanks to the team's effort.`, cn: `多虧了團隊的努力，專案得以${cleanMeaning}地完成。` },
-          { en: `Please respond ${lowerWord} to confirm your attendance at the conference.`, cn: `請${cleanMeaning}回覆以確認您是否出席研討會。` },
-          { en: `Sales figures have increased ${lowerWord} over the past two quarters.`, cn: `在過去兩個季度中，銷售數字已${cleanMeaning}成長。` },
-          { en: `The executive officer explained the new budget plan ${lowerWord}.`, cn: `執行長${cleanMeaning}地解釋了全新的預算計畫。` },
-          { en: `Our client handled the negotiation process ${lowerWord}.`, cn: `我們的客戶在談判過程中處理得相當${cleanMeaning}。` }
+          { en: `The sun rose ${lowerWord} over the horizon as we started driving.`, cn: `當我們開車出發時，太陽正${cleanMeaning}地從地平線升起。` },
+          { en: `She walks ${lowerWord} through the park every single morning.`, cn: `她每天早晨都${cleanMeaning}地散步穿過公園。` },
+          { en: `The kitten slept ${lowerWord} on the soft wool pillow.`, cn: `小貓在軟綿綿的羊毛枕頭上${cleanMeaning}地睡著。` },
+          { en: `Please speak ${lowerWord} so that everyone in the back row can hear.`, cn: `請${cleanMeaning}地講話，這樣後排的每個人才能聽見。` },
+          { en: `He handled the delicate situation surprisingly ${lowerWord}.`, cn: `令人驚訝的是，他相當${cleanMeaning}地處理了那個棘手狀況。` }
         ];
         return templates[choice];
       } else if (lowerPos.startsWith('prep') || lowerPos.startsWith('conj') || lowerPos.startsWith('art')) {
         const templates = [
-          { en: `Please submit your application ${lowerWord} the stated deadline.`, cn: `請在規定的截止日期前${cleanMeaning}提出申請。` },
-          { en: `The conference will take place ${lowerWord} the main auditorium.`, cn: `研討會將會在主禮堂${cleanMeaning}舉行。` },
-          { en: `All staff members must comply ${lowerWord} office regulations.`, cn: `所有員工都必須遵守與${cleanMeaning}相關的辦公室規定。` },
-          { en: `The meeting was rescheduled ${lowerWord} unexpected delays.`, cn: `會議因突發的延誤情況而${cleanMeaning}重新排程。` },
-          { en: `You can contact customer service ${lowerWord} phone or email.`, cn: `您可以透過電話或電子郵件${cleanMeaning}聯繫客戶服務。` }
+          { en: `We decided to go for a picnic ${lowerWord} the lake shore.`, cn: `我們決定去湖岸邊${cleanMeaning}野餐。` },
+          { en: `They stayed up late talking ${lowerWord} midnight passed.`, cn: `他們聊得很晚，直到${cleanMeaning}過後。` },
+          { en: `Put your jacket on ${lowerWord} it gets chilly outside.`, cn: `穿上你的外套，以防外頭${cleanMeaning}變冷。` },
+          { en: `She walked ${lowerWord} the bustling market looking for fresh flowers.`, cn: `她穿過熱鬧的市場${cleanMeaning}尋找鮮花。` },
+          { en: `You can reach the store either by walking ${lowerWord} taking a bus.`, cn: `您可以走路或者搭乘公車前往${cleanMeaning}該店家。` }
         ];
         return templates[choice];
       } else {
         const templates = [
-          { en: `The team presented a detailed report on the new ${lowerWord}.`, cn: `團隊提交了一份關於全新${cleanMeaning}的詳細報告。` },
-          { en: `Effective management of ${lowerWord} is crucial for business growth.`, cn: `有效管理${cleanMeaning}對於企業成長至關重要。` },
-          { en: `Our department received positive feedback regarding the ${lowerWord}.`, cn: `我們部門收到了有關該${cleanMeaning}的正面反饋。` },
-          { en: `She is responsible for overseeing the daily operations of ${lowerWord}.`, cn: `她負責監督與${cleanMeaning}相關的日常運作。` },
-          { en: `The company invested significant resources in developing the ${lowerWord}.`, cn: `公司投入了大量資源來開發該${cleanMeaning}。` }
+          { en: `Having a hot cup of tea is a wonderful ${lowerWord} in winter.`, cn: `冬天喝一杯熱茶是非常棒的${cleanMeaning}。` },
+          { en: `She brought a useful ${lowerWord} with her on the camping trip.`, cn: `她在露營旅行時帶了一個實用的${cleanMeaning}。` },
+          { en: `The neighborhood park is a popular ${lowerWord} for pet owners.`, cn: `社區公園是寵物主人們相當喜愛的${cleanMeaning}。` },
+          { en: `Listening to good music brings so much ${lowerWord} to my life.`, cn: `聆聽好音樂給我的生活帶來了許多${cleanMeaning}。` },
+          { en: `He bought a new ${lowerWord} for his living room decoration.`, cn: `他買了一個全新的${cleanMeaning}來裝飾客廳。` }
         ];
         return templates[choice];
       }
@@ -631,6 +693,24 @@
       return formatted.trim().replace(/\n+/g, '<br>');
     }
 
+    function cleanTranslationText(transText) {
+      if (!transText) return '';
+      let lines = transText.split(/\r?\n/);
+      let chineseLines = lines.filter(line => {
+        let t = line.trim();
+        if (!t) return false;
+        return /[\u4e00-\u9fa5]/.test(t);
+      });
+
+      let cleaned = chineseLines.join('\n')
+        .replace(/Woman\s*[:：]/gi, '女：')
+        .replace(/Man\s*[:：]/gi, '男：')
+        .replace(/Question\s*[:：]/gi, '問：')
+        .replace(/Option\s*([A-D])\s*[:：]/gi, '選項 ($1)：');
+
+      return cleaned || transText;
+    }
+
     function formatTranscript(script) {
       if (!script) return '';
       let clean = script.replace(/【[^】]+】/g, '').trim();
@@ -639,7 +719,6 @@
     }
 
     function selectSection(sec) {
-      // 切換分頁時，強制停止目前正進行的語音發音
       window.speechSynthesis.cancel();
 
       if (currentSection === sec && sec !== 'profile') return;
@@ -777,7 +856,6 @@
       if (isFetching) return;
       isFetching = true;
 
-      // 切換/獲取新題目時停止舊音檔
       window.speechSynthesis.cancel();
 
       const loadingEl = document.getElementById('loading');
@@ -854,7 +932,6 @@
         passageBox.style.display = 'none';
       }
 
-      // 強制聽力練習皆顯示音檔播放列
       const audioContainer = document.getElementById('audio-control-container');
       const isListening = (q.section === 'listening');
       audioContainer.style.display = isListening ? 'flex' : 'none';
@@ -882,23 +959,21 @@
       });
     }
 
-    // 聽力語音播放引擎（男女聲切換、去標籤、不唸題目與選項）
+    // 聽力語音播放引擎（Part 2 不唸選項、全題型音檔強固綁定）
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
       let linesToSpeak = [];
 
-      // 僅提取對話/短文逐字稿 (audioScript)，不把畫面上的 Question 或 Options 塞入朗讀佇列
+      // Part 2 Question-Response 只朗讀題目問句，絕對不唸出選項
       if (isPart2(currentQuestion)) {
-        let script = currentQuestion.audioScript || currentQuestion.question;
-        linesToSpeak = script.split(/\r?\n/).filter(line => line.trim() !== '');
+        let script = currentQuestion.question || currentQuestion.audioScript || '';
+        let firstLine = script.split(/\r?\n/)[0];
+        linesToSpeak = [firstLine];
       } else {
-        if (currentQuestion.audioScript) {
-          linesToSpeak = currentQuestion.audioScript.split(/\r?\n/).filter(line => line.trim() !== '');
-        } else if (currentQuestion.passage) {
-          linesToSpeak = currentQuestion.passage.split(/\r?\n/).filter(line => line.trim() !== '');
-        }
+        let script = currentQuestion.audioScript || currentQuestion.passage || currentQuestion.question || '';
+        linesToSpeak = script.split(/\r?\n/).filter(line => line.trim() !== '');
       }
 
       if (linesToSpeak.length === 0) return;
@@ -939,7 +1014,6 @@
           lastSpeakerWasMan = isMan;
         }
 
-        // 自動過濾掉 Man: / Woman: 標籤與 Question: 標頭，只朗讀說話內容
         let cleanText = originalLine
           .replace(/^\s*\(?\s*(woman|man|female|male|speaker\s*\d+|w|m)\s*\)?\s*[:：.-]\s*/i, '')
           .replace(/^\s*Question\s*[:：.-]\s*/i, '')
@@ -986,11 +1060,7 @@
       if (isAnswered) return;
       isAnswered = true;
 
-      // // 作答後，停止發音，並將 Part 2 題目揭示出來
       window.speechSynthesis.cancel();
-      // if (isPart2(currentQuestion)) {
-      //   document.getElementById('question-text').innerHTML = formatText(currentQuestion.question);
-      // }
 
       const isCorrect = selectedIndex === currentQuestion.answer;
       
@@ -1036,7 +1106,7 @@
 
       let translationHtml = '';
       if (currentQuestion.translation) {
-        let cleanTrans = formatText(currentQuestion.translation.replace(/【[^】]+】/g, '').trim());
+        let cleanTrans = formatText(cleanTranslationText(currentQuestion.translation.replace(/【[^】]+】/g, '').trim()));
 
         translationHtml = `
           <div class="translation-box" style="margin-bottom: 16px;">
