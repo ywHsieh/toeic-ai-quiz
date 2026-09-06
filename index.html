@@ -646,8 +646,6 @@
       // Part 2 答題前隱藏題目文字
       if (isPart2(q)) {
         document.getElementById('question-text').innerText = "";
-      } else {
-        document.getElementById('question-text').innerHTML = formatText(q.question);
       }
 
       const optionsBox = document.getElementById('options-box');
