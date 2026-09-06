@@ -214,7 +214,7 @@
 
     .flashcard {
       perspective: 1000px;
-      height: 220px;
+      height: 240px;
       cursor: pointer;
       margin-bottom: 16px;
     }
@@ -240,12 +240,31 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 16px;
       border-radius: 12px;
     }
     .flashcard-back { transform: rotateY(180deg); background: #ECFDF5; }
     
     .game-actions { display: flex; gap: 10px; margin-top: 12px; }
+
+    .game-quiz-next-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .btn-game-next {
+      background-color: var(--primary-game);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-game-next:hover { opacity: 0.9; }
 
     .custom-modal-overlay {
       position: fixed;
@@ -346,7 +365,6 @@
     <div class="game-card" id="game-card" style="display: none;">
       <div class="part-header">
         <span class="badge badge-g">多益核心單字遊戲</span>
-        <button onclick="loadNewGameWord()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #D1D5DB; background: white;">🔄 換單字</button>
       </div>
 
       <div class="game-mode-selector">
@@ -366,8 +384,9 @@
             </div>
             <div class="flashcard-back">
               <span id="card-pos" style="font-style: italic; color: #059669; font-weight: bold;">[詞性]</span>
-              <h3 id="card-meaning" style="font-size: 22px; margin: 8px 0; color: #065F46;">中文解釋</h3>
-              <p id="card-example" style="font-size: 13px; color: #374151; max-width: 90%; line-height: 1.5; margin-top: 6px;">例句載入中...</p>
+              <h3 id="card-meaning" style="font-size: 22px; margin: 6px 0; color: #065F46;">中文解釋</h3>
+              <p id="card-example" style="font-size: 13px; color: #374151; max-width: 90%; line-height: 1.4; margin-top: 4px; margin-bottom: 2px;">例句載入中...</p>
+              <p id="card-example-cn" style="font-size: 12.5px; color: #047857; max-width: 90%; line-height: 1.4; margin-top: 0;">中文翻譯載入中...</p>
             </div>
           </div>
         </div>
@@ -387,6 +406,10 @@
         <div style="font-weight: bold; margin-bottom: 10px; font-size: 14px;">請選擇正確的中文意思：</div>
         <div class="options-list" id="game-quiz-options"></div>
         <div id="game-quiz-feedback" style="margin-top: 14px; font-weight: bold; text-align: center; display: none;"></div>
+        
+        <div class="game-quiz-next-container" id="game-quiz-next-box" style="display: none;">
+          <button class="btn-game-next" onclick="loadNewGameWord()">下一題 👉</button>
+        </div>
       </div>
     </div>
 
@@ -441,19 +464,19 @@
     let isAnswered = false;
     let isFetching = false;
 
-    // 單字庫遊戲資料
+    // 單字庫遊戲資料（包含翻譯）
     let currentGameWord = null;
     let currentGameMode = 'card';
 
     const toeicVocabularyBank = [
-      { word: "Implement", kk: "[ˈɪmplɪmɛnt]", pos: "v.", meaning: "實施；執行", example: "The company plans to implement the new policy next month." },
-      { word: "Negotiate", kk: "[nɪˈɡoʊʃiˌeɪt]", pos: "v.", meaning: "談判；協商", example: "We need to negotiate a better contract with our supplier." },
-      { word: "Substantial", kk: "[səbˈstænʃəl]", pos: "adj.", meaning: "大量的；相當的", example: "There was a substantial increase in profits this quarter." },
-      { word: "Agenda", kk: "[əˈdʒɛndə]", pos: "n.", meaning: "議程；討論事項", example: "What is the first item on today's meeting agenda?" },
-      { word: "Compliance", kk: "[kəmˈplaɪəns]", pos: "n.", meaning: "順從；合規", example: "All employees must act in compliance with safety regulations." },
-      { word: "Accommodate", kk: "[əˈkɑməˌdeɪt]", pos: "v.", meaning: "容納；提供住宿", example: "The hotel can accommodate up to 500 conference guests." },
-      { word: "Compensation", kk: "[ˌkɑmpənˈseɪʃən]", pos: "n.", meaning: "補償；薪酬", example: "The sales rep received generous compensation for his hard work." },
-      { word: "Procurement", kk: "[prəˈkjʊrmənt]", pos: "n.", meaning: "採購；取得", example: "She is in charge of equipment procurement for the hospital." }
+      { word: "Implement", kk: "[ˈɪmplɪmɛnt]", pos: "v.", meaning: "實施；執行", example: "The company plans to implement the new policy next month.", exampleCn: "公司計劃下個月實施新政策。" },
+      { word: "Negotiate", kk: "[nɪˈɡoʊʃiˌeɪt]", pos: "v.", meaning: "談判；協商", example: "We need to negotiate a better contract with our supplier.", exampleCn: "我們需要與供應商協商一份更好的合約。" },
+      { word: "Substantial", kk: "[səbˈstænʃəl]", pos: "adj.", meaning: "大量的；相當的", example: "There was a substantial increase in profits this quarter.", exampleCn: "本季利潤大幅增加。" },
+      { word: "Agenda", kk: "[əˈdʒɛndə]", pos: "n.", meaning: "議程；討論事項", example: "What is the first item on today's meeting agenda?", exampleCn: "今天會議議程的第一項是什麼？" },
+      { word: "Compliance", kk: "[kəmˈplaɪəns]", pos: "n.", meaning: "順從；合規", example: "All employees must act in compliance with safety regulations.", exampleCn: "所有員工必須遵守安全法規。" },
+      { word: "Accommodate", kk: "[əˈkɑməˌdeɪt]", pos: "v.", meaning: "容納；提供住宿", example: "The hotel can accommodate up to 500 conference guests.", exampleCn: "這間飯店可容納多達 500 位會議賓客。" },
+      { word: "Compensation", kk: "[ˌkɑmpənˈseɪʃən]", pos: "n.", meaning: "補償；薪酬", example: "The sales rep received generous compensation for his hard work.", exampleCn: "這位銷售代表因辛勤工作獲得了豐厚的薪酬。" },
+      { word: "Procurement", kk: "[prəˈkjʊrmənt]", pos: "n.", meaning: "採購；取得", example: "She is in charge of equipment procurement for the hospital.", exampleCn: "她負責醫院的設備採購工作。" }
     ];
 
     let userStats = JSON.parse(localStorage.getItem('toeic_stats')) || { total: 0, correct: 0 };
@@ -745,7 +768,7 @@
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
       if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "🎧 請點擊上方按鈕聆聽題目與選項。";
+        document.getElementById('question-text').innerText = "";
       } else {
         document.getElementById('question-text').innerHTML = formatText(q.question);
       }
@@ -771,7 +794,6 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      // 多層次防呆音檔取材：audioScript -> passage -> script -> question -> options (保證 100% 有音檔)
       let rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
         : (currentQuestion.audioScript || currentQuestion.passage || currentQuestion.script || currentQuestion.question);
@@ -808,7 +830,6 @@
           isMan = (currentLineIndex % 2 === 1);
         }
 
-        // 精準清洗角色前綴 (例如 Woman:, Man:, W:, M:)，不誤刪音檔文義
         let cleanText = originalLine
           .replace(/^\s*\(?\s*(woman|man|female|male|speaker\s*\d+)\s*\)?\s*[:：.-]\s*/i, '')
           .replace(/^\s*\(?\s*[wm]\s*\)?\s*[:：.-]\s*/i, '')
@@ -992,17 +1013,19 @@
       const randomIdx = Math.floor(Math.random() * toeicVocabularyBank.length);
       currentGameWord = toeicVocabularyBank[randomIdx];
 
-      // 載入 Flashcard 內容
+      // 載入 Flashcard 內容（包含例句與中文翻譯）
       document.getElementById('card-word').innerText = currentGameWord.word;
       document.getElementById('card-kk').innerText = currentGameWord.kk;
       document.getElementById('card-pos').innerText = currentGameWord.pos;
       document.getElementById('card-meaning').innerText = currentGameWord.meaning;
       document.getElementById('card-example').innerText = `例句: "${currentGameWord.example}"`;
+      document.getElementById('card-example-cn').innerText = `翻譯: "${currentGameWord.exampleCn}"`;
 
       // 載入 Quiz 測驗內容
       document.getElementById('game-quiz-word').innerText = currentGameWord.word;
       document.getElementById('game-quiz-kk').innerText = currentGameWord.kk;
       document.getElementById('game-quiz-feedback').style.display = 'none';
+      document.getElementById('game-quiz-next-box').style.display = 'none';
 
       // 產生 4 個選項（包含 1 個正確，3 個干擾）
       let choices = [currentGameWord.meaning];
@@ -1044,6 +1067,9 @@
           if (b.innerText === currentGameWord.meaning) b.classList.add('correct');
         });
       }
+
+      // 顯示置中的下一題按鈕
+      document.getElementById('game-quiz-next-box').style.display = 'flex';
     }
   </script>
 </body>
