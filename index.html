@@ -111,7 +111,7 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      line-height: 1.6;
+      line-height: 1.7;
       font-size: 13.5px;
       white-space: pre-line;
     }
@@ -122,7 +122,7 @@
       padding: 12px;
       border-radius: 6px;
       margin: 12px 0;
-      line-height: 1.6;
+      line-height: 1.7;
       font-size: 13.5px;
       color: #78350F;
       white-space: pre-line;
@@ -134,12 +134,13 @@
       background: #FFFFFF;
       border-radius: 8px;
       border: 1px solid #E5E7EB;
+      line-height: 1.7;
     }
 
     .analysis-title {
       font-weight: bold;
       color: #1F2937;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -248,14 +249,14 @@
     <h1>🤖 A Jun 多益練習</h1>
 
     <div class="section-tabs">
-      <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力題型</button>
-      <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀題型</button>
+      <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力練習</button>
+      <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀練習</button>
       <button class="sec-tab" onclick="selectSection('profile')">📊 個人紀錄</button>
     </div>
 
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
-        <div id="loading-text">⚡ AI 生成題目中，請耐心等候...</div>
+        <div id="loading-text">⚡ 題目產生中，請耐心等候...</div>
       </div>
 
       <div class="part-header">
@@ -270,10 +271,10 @@
           🔊 點擊播放聽力語音
         </button>
         <select id="playback-speed" class="speed-select">
-          <option value="0.75">0.75x 慢速</option>
+          <option value="0.5">0.5x 慢速</option>
+          <option value="0.75">0.75x 練習</option>
           <option value="1.0" selected>1.0x 正常</option>
-          <option value="1.25">1.25x 快速</option>
-          <option value="1.5">1.5x 挑戰</option>
+          <option value="1.25">1.25x 挑戰</option>
         </select>
       </div>
 
@@ -310,7 +311,7 @@
       </div>
 
       <div class="wrong-list" id="wrong-list-container">
-        <div style="text-align: center; color: #94A3B8; padding: 30px; font-size: 13.5px;">目前沒有錯題紀錄，繼續保持！ 🎉</div>
+        <div style="text-align: center; color: #94A3B8; padding: 30px; font-size: 13.5px;">目前沒有錯題紀錄</div>
       </div>
     </div>
 
@@ -386,14 +387,16 @@
       document.getElementById('custom-modal').style.display = 'none';
     }
 
-    // 格式化換行與重點強調
+    // 格式化換行與重點標題
     function formatText(str) {
       if (!str) return '';
-      return str
-        .replace(/\\n/g, '<br>')
-        .replace(/\n/g, '<br>')
-        .replace(/(題目解析|考點說明|情境說明)[:：]?/gi, '<br><strong>💡 $1：</strong><br>')
-        .replace(/(選項解析)[:：]?/gi, '<br><strong>🔍 $1：</strong><br>');
+      let formatted = str
+        .replace(/\\n/g, '\n')
+        .replace(/(題目解析|考點說明|情境說明)[:：]?/gi, '\n<strong>💡 $1：</strong>\n')
+        .replace(/(選項解析)[:：]?/gi, '\n<strong>🔍 $1：</strong>\n')
+        .replace(/(\([A-D]\))/g, '\n$1');
+
+      return formatted.trim().replace(/\n/g, '<br>');
     }
 
     function selectSection(sec) {
@@ -454,7 +457,7 @@
 
       const container = document.getElementById('wrong-list-container');
       if (wrongBook.length === 0) {
-        container.innerHTML = `<div style="text-align: center; color: #94A3B8; padding: 30px; font-size: 13.5px;">目前沒有錯題紀錄，繼續保持！ 🎉</div>`;
+        container.innerHTML = `<div style="text-align: center; color: #94A3B8; padding: 30px; font-size: 13.5px;">目前沒有錯題紀錄</div>`;
         return;
       }
 
@@ -469,6 +472,7 @@
       `).join('');
     }
 
+    // 錯題複習機制：直接渲染原題目並允許重新解答作答
     function reviewWrongQuestion(index) {
       const q = wrongBook[index];
       currentSection = q.section || 'listening';
@@ -482,7 +486,12 @@
       document.getElementById('quiz-card').style.display = 'block';
       document.getElementById('profile-card').style.display = 'none';
 
-      renderQuestion(q);
+      // 重新重置答題狀態
+      isAnswered = false;
+      document.getElementById('analysis-box').style.display = 'none';
+      document.getElementById('next-btn').style.display = 'none';
+
+      renderQuestion(q, false); // 第二個參數代表不重新打散選項
     }
 
     function removeWrongQuestion(index) {
@@ -525,7 +534,7 @@
       loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
       loadingEl.style.display = 'flex';
 
-      // 聽力徹底排除 p1 圖片題
+      // 聽力題型隨機抽取 p2, p3, p4 (完全排除 p1 圖片題)
       const parts = currentSection === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
       const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
@@ -546,7 +555,7 @@
         rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
 
         currentQuestion = JSON.parse(rawJsonStr);
-        renderQuestion(currentQuestion);
+        renderQuestion(currentQuestion, true); // 隨機打散選項與答案
       } catch (err) {
         console.error("解析失敗詳情：", err);
         showCustomError("AI 努力生成題目中，建議稍候片刻後再試一次！", "出題提示");
@@ -559,11 +568,32 @@
     function isPart2(q) {
       if (!q) return false;
       const partName = (q.partName || '').toLowerCase();
-      return partName.includes('part 2') || partName.includes('part2') || partName.includes('p2');
+      const part = (q.part || '').toLowerCase();
+      return partName.includes('part 2') || partName.includes('part2') || part === 'p2';
     }
 
-    function renderQuestion(q) {
+    // 隨機打散選項並同步更新 correct index
+    function shuffleOptions(q) {
+      if (!q || !q.options) return;
+      
+      const correctOptionText = q.options[q.answer];
+      
+      // 洗牌演算法
+      for (let i = q.options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [q.options[i], q.options[j]] = [q.options[j], q.options[i]];
+      }
+
+      // 更新答案 index
+      q.answer = q.options.findIndex(opt => opt === correctOptionText);
+    }
+
+    function renderQuestion(q, shouldShuffle = true) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (shouldShuffle) {
+        shuffleOptions(q);
+      }
 
       document.getElementById('part-badge').innerText = q.partName || (q.section === 'listening' ? '聽力測驗' : '閱讀測驗');
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
@@ -577,8 +607,10 @@
       }
 
       const audioContainer = document.getElementById('audio-control-container');
-      audioContainer.style.display = (q.section === 'listening') ? 'flex' : 'none';
+      const isListening = (q.section === 'listening');
+      audioContainer.style.display = isListening ? 'flex' : 'none';
 
+      // Part 2 Question-Response 題目不顯示於畫面上，提交後才顯示
       if (isPart2(q)) {
         document.getElementById('question-text').innerText = "🔊 點擊播放聽力語音";
       } else {
@@ -593,11 +625,10 @@
         const btn = document.createElement('button');
         btn.className = 'opt-btn';
         
-        let cleanOptText = opt.trim();
-        const hasPrefix = /^\([A-D]\)/i.test(cleanOptText);
+        let cleanOptText = opt.replace(/^\([A-D]\)\s*/i, '').trim();
         const prefix = optionLabels[i] || `(${String.fromCharCode(65 + i)})`;
 
-        btn.innerText = hasPrefix ? cleanOptText : `${prefix} ${cleanOptText}`;
+        btn.innerText = `${prefix} ${cleanOptText}`;
         btn.onclick = () => handleAnswer(i);
         optionsBox.appendChild(btn);
       });
@@ -607,15 +638,17 @@
       }
     }
 
+    // 多角色聽力朗讀語音
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
+      // 音檔朗讀內容處理
       const rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
         : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.passage || currentQuestion.question);
 
-      const lines = rawScript.split('\n').filter(line => line.trim() !== '');
+      const lines = rawScript.split(/\r?\n/).filter(line => line.trim() !== '');
 
       const speedSelect = document.getElementById('playback-speed');
       const selectedRate = parseFloat(speedSelect.value) || 1.0;
@@ -630,12 +663,13 @@
         if (currentLineIndex >= lines.length) return;
 
         const originalLine = lines[currentLineIndex++];
-        const isMan = /(^|\b)(man|male|speaker\s*1|m)(\b|[:：])/i.test(originalLine);
+        
+        // 辨識 Man / Woman 角色語音
+        const isMan = /(^|\s|\()(man|male|speaker\s*1|m)(\b|[:：\)])/i.test(originalLine);
 
         let cleanText = originalLine
-          .replace(/^(man|woman|speaker\s*\d+|m|w|speaker\s*[a-z])\s*[:：.-]*/i, '')
+          .replace(/^(\s*\(?\s*(man|woman|male|female|speaker\s*\d+|m|w)\s*\)?\s*[:：.-]*)/i, '')
           .replace(/^[^:：]+[:：]\s*/, '')
-          .replace(/\b(man|woman|speaker\s*\d+)\b/gi, '')
           .replace(/\([^)]*\)/g, '')
           .replace(/\[[^\]]*\]/g, '')
           .trim();
@@ -658,6 +692,7 @@
         }
 
         utterance.onend = speakNextLine;
+        utterance.onerror = speakNextLine;
         window.speechSynthesis.speak(utterance);
       }
 
@@ -668,6 +703,7 @@
       if (isAnswered) return;
       isAnswered = true;
 
+      // Part 2 提交答案後顯示題目完整內容
       if (isPart2(currentQuestion)) {
         document.getElementById('question-text').innerHTML = formatText(currentQuestion.question);
       }
@@ -726,7 +762,6 @@
         `;
       }
 
-      // 遵循指定的表格結構
       let vocabHtml = '';
       if (currentQuestion.vocabularies && currentQuestion.vocabularies.length > 0) {
         let rows = currentQuestion.vocabularies.map(v => `
@@ -755,7 +790,7 @@
 
       let statusText = isCorrect ? '🎉 回答正確！' : '❌ 答錯囉！正確答案是：' + ['(A)', '(B)', '(C)', '(D)'][currentQuestion.answer];
       if (removedFromWrongBook) {
-        statusText += ' ✨ (此題已從錯題本中移除)';
+        statusText += ' ✨ (此題答對，已自動從錯題本中移除)';
       }
 
       analysisBox.innerHTML = `
