@@ -419,7 +419,6 @@
     }
 
     function selectSection(sec) {
-      // 切換頁面時立刻停止當前播報音檔
       window.speechSynthesis.cancel();
 
       if (currentSection === sec && sec !== 'profile') return;
@@ -495,7 +494,6 @@
     }
 
     function reviewWrongQuestion(index) {
-      // 點擊錯題複習時立刻停止音檔
       window.speechSynthesis.cancel();
 
       const q = wrongBook[index];
@@ -551,7 +549,6 @@
       if (isFetching) return;
       isFetching = true;
 
-      // 切換新題目時立刻停止舊語音
       window.speechSynthesis.cancel();
 
       const loadingEl = document.getElementById('loading');
@@ -658,12 +655,15 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      // 音檔來源順序支援：audioScript -> script -> passage -> question
-      const rawScript = isPart2(currentQuestion) 
+      // 多層次防呆：聽力音檔取材優序音檔腳本 -> script -> 文章 -> 題目文字
+      let rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
         : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.passage || currentQuestion.question);
 
-      if (!rawScript) return;
+      if (!rawScript || rawScript.trim() === '') {
+        // 極限保底：若無文字，以題目與選項備援
+        rawScript = `${currentQuestion.question || ''}\n${(currentQuestion.options || []).join('\n')}`;
+      }
 
       const lines = rawScript.split(/\r?\n/).filter(line => line.trim() !== '');
 
@@ -681,12 +681,13 @@
 
         const originalLine = lines[currentLineIndex++];
         
-        // 精準判定角色性別：Man / Male / Speaker 1 / M
+        // 判定男聲發音條件：Man / Male / Speaker 1 / M (含前綴與冒號)
         const isMan = /(^|\s|\()(man|male|speaker\s*1|m)(\b|[:：\)])/i.test(originalLine);
 
-        // 徹底過濾 Woman: / Man: / W: / M: / (W) / (M) 等前綴標記，完全不朗讀
+        // 修復重點：精準去除 Woman: / Man: / W: / M: / (W) / (M) 角色開頭標註，絕不誤刪 When/Where/What 等開頭單字
         let cleanText = originalLine
-          .replace(/^(\s*\(?\s*(woman|man|female|male|speaker\s*\d+|w|m)\s*\)?\s*[:：.-]*)/i, '')
+          .replace(/^(\s*\(?\s*(woman|man|female|male|speaker\s*\d+)\s*\)?\s*[:：.-]*)/i, '')
+          .replace(/^(\s*\(?\s*[wm]\s*\)?\s*[:：.-]+)/i, '') // 僅當 w/m 後面跟隨冒號/連字號時才移除
           .replace(/^[^:：]+[:：]\s*/, '')
           .replace(/\([^)]*\)/g, '')
           .replace(/\[[^\]]*\]/g, '')
@@ -701,10 +702,9 @@
         utterance.lang = 'en-US';
         utterance.rate = selectedRate;
 
-        // 雙語音對話音調與語音庫切換
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
-          utterance.pitch = 0.55;
+          utterance.pitch = 0.65;
         } else {
           if (femaleVoice) utterance.voice = femaleVoice;
           utterance.pitch = 1.35;
