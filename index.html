@@ -8,6 +8,7 @@
     :root {
       --primary-listening: #2563EB;
       --primary-reading: #D97706;
+      --primary-game: #10B981;
       --primary-profile: #7C3AED;
       --bg-color: #F3F4F6;
       --card-bg: #FFFFFF;
@@ -44,18 +45,20 @@
 
     .section-tabs { display: flex; background-color: #E5E7EB; border-radius: 12px; padding: 4px; margin-bottom: 16px; gap: 4px; }
     .sec-tab {
-      flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 13px; font-weight: bold;
+      flex: 1; padding: 10px 0; border: none; background: transparent; font-size: 12.5px; font-weight: bold;
       border-radius: 8px; cursor: pointer; color: #4B5563; transition: all 0.2s; text-align: center;
     }
     .sec-tab.active-listening { background: var(--primary-listening); color: white; }
     .sec-tab.active-reading { background: var(--primary-reading); color: white; }
+    .sec-tab.active-game { background: var(--primary-game); color: white; }
     .sec-tab.active-profile { background: var(--primary-profile); color: white; }
 
-    .quiz-card, .profile-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; position: relative; min-height: 300px; }
+    .quiz-card, .profile-card, .game-card { border: 1px solid #E5E7EB; border-radius: 12px; padding: 20px; position: relative; min-height: 300px; }
     .part-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .badge { padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; }
     .badge-l { background-color: #DBEAFE; color: #1E40AF; }
     .badge-r { background-color: #FEF3C7; color: #92400E; }
+    .badge-g { background-color: #D1FAE5; color: #065F46; }
 
     .passage-box { background: #FFFBEB; border-left: 4px solid var(--primary-reading); padding: 12px; border-radius: 6px; font-size: 13.5px; line-height: 1.7; margin-bottom: 14px; white-space: pre-line; }
     
@@ -204,6 +207,46 @@
     .btn-reset-all { background: #DC2626; color: white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
     .btn-reset-all:hover { opacity: 0.9; }
 
+    /* 單字遊戲專用樣式 */
+    .game-mode-selector { display: flex; gap: 10px; margin-bottom: 16px; }
+    .game-mode-btn { flex: 1; padding: 10px; border: 1px solid #D1D5DB; background: white; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; color: #4B5563; }
+    .game-mode-btn.active { background: var(--primary-game); color: white; border-color: var(--primary-game); }
+
+    .flashcard {
+      perspective: 1000px;
+      height: 220px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .flashcard-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 2px solid #E2E8F0;
+      background: #FFFFFF;
+    }
+    .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+    .flashcard-front, .flashcard-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .flashcard-back { transform: rotateY(180deg); background: #ECFDF5; }
+    
+    .game-actions { display: flex; gap: 10px; margin-top: 12px; }
+
     .custom-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -264,9 +307,11 @@
     <div class="section-tabs">
       <button class="sec-tab active-listening" onclick="selectSection('listening')">🎧 聽力練習</button>
       <button class="sec-tab" onclick="selectSection('reading')">📖 閱讀練習</button>
+      <button class="sec-tab" onclick="selectSection('game')">🎮 單字遊戲</button>
       <button class="sec-tab" onclick="selectSection('profile')">📊 個人紀錄</button>
     </div>
 
+    <!-- 題目測驗區塊 -->
     <div class="quiz-card" id="quiz-card">
       <div id="loading" class="loading-overlay" style="display:none;">
         <div id="loading-text">⚡ 題目產生中，請耐心等候...</div>
@@ -297,6 +342,55 @@
       <button class="next-btn" id="next-btn" onclick="fetchNewQuestionFromAI()">下一題👉</button>
     </div>
 
+    <!-- 單字遊戲區塊 -->
+    <div class="game-card" id="game-card" style="display: none;">
+      <div class="part-header">
+        <span class="badge badge-g">多益核心單字遊戲</span>
+        <button onclick="loadNewGameWord()" style="padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 6px; border: 1px solid #D1D5DB; background: white;">🔄 換單字</button>
+      </div>
+
+      <div class="game-mode-selector">
+        <button class="game-mode-btn active" id="mode-card-btn" onclick="switchGameMode('card')">🎴 Flashcard 翻牌</button>
+        <button class="game-mode-btn" id="mode-quiz-btn" onclick="switchGameMode('quiz')">🧩 測驗挑戰</button>
+      </div>
+
+      <!-- 模式 1: 記憶卡 -->
+      <div id="game-flashcard-mode">
+        <div class="flashcard" id="flashcard" onclick="toggleFlashcard()">
+          <div class="flashcard-inner">
+            <div class="flashcard-front">
+              <h2 id="card-word" style="font-size: 28px; margin: 0; color: #1E293B;">Loading...</h2>
+              <p id="card-kk" style="color: #64748B; margin-top: 8px;">/ ... /</p>
+              <button class="btn-audio-sm" style="margin-top: 10px; padding: 6px 12px;" onclick="event.stopPropagation(); speakSingleWord(document.getElementById('card-word').innerText)">🔊 聽發音</button>
+              <div style="font-size: 12px; color: #94A3B8; margin-top: 20px;">💡 點擊卡片查看中文解釋</div>
+            </div>
+            <div class="flashcard-back">
+              <span id="card-pos" style="font-style: italic; color: #059669; font-weight: bold;">[詞性]</span>
+              <h3 id="card-meaning" style="font-size: 22px; margin: 8px 0; color: #065F46;">中文解釋</h3>
+              <p id="card-example" style="font-size: 13px; color: #374151; max-width: 90%; line-height: 1.5; margin-top: 6px;">例句載入中...</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="game-actions">
+          <button class="modal-btn modal-btn-secondary" onclick="loadNewGameWord()">⏭️ 下一個單字</button>
+        </div>
+      </div>
+
+      <!-- 模式 2: 單字測驗 -->
+      <div id="game-quiz-mode" style="display: none;">
+        <div style="background: #F8FAFC; border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center;">
+          <h2 id="game-quiz-word" style="margin: 0; color: #1E293B;">Word</h2>
+          <p id="game-quiz-kk" style="color: #64748B; margin-top: 4px;">/ ... /</p>
+          <button class="btn-audio-sm" onclick="speakSingleWord(document.getElementById('game-quiz-word').innerText)">🔊 聽發音</button>
+        </div>
+        <div style="font-weight: bold; margin-bottom: 10px; font-size: 14px;">請選擇正確的中文意思：</div>
+        <div class="options-list" id="game-quiz-options"></div>
+        <div id="game-quiz-feedback" style="margin-top: 14px; font-weight: bold; text-align: center; display: none;"></div>
+      </div>
+    </div>
+
+    <!-- 個人紀錄區塊 -->
     <div class="profile-card" id="profile-card" style="display: none;">
       <div class="profile-header">
         <h3 style="margin: 0; color: #1E293B; font-size: 18px;">📊 我的個人紀錄</h3>
@@ -346,6 +440,21 @@
     let currentQuestion = null;
     let isAnswered = false;
     let isFetching = false;
+
+    // 單字庫遊戲資料
+    let currentGameWord = null;
+    let currentGameMode = 'card';
+
+    const toeicVocabularyBank = [
+      { word: "Implement", kk: "[ˈɪmplɪmɛnt]", pos: "v.", meaning: "實施；執行", example: "The company plans to implement the new policy next month." },
+      { word: "Negotiate", kk: "[nɪˈɡoʊʃiˌeɪt]", pos: "v.", meaning: "談判；協商", example: "We need to negotiate a better contract with our supplier." },
+      { word: "Substantial", kk: "[səbˈstænʃəl]", pos: "adj.", meaning: "大量的；相當的", example: "There was a substantial increase in profits this quarter." },
+      { word: "Agenda", kk: "[əˈdʒɛndə]", pos: "n.", meaning: "議程；討論事項", example: "What is the first item on today's meeting agenda?" },
+      { word: "Compliance", kk: "[kəmˈplaɪəns]", pos: "n.", meaning: "順從；合規", example: "All employees must act in compliance with safety regulations." },
+      { word: "Accommodate", kk: "[əˈkɑməˌdeɪt]", pos: "v.", meaning: "容納；提供住宿", example: "The hotel can accommodate up to 500 conference guests." },
+      { word: "Compensation", kk: "[ˌkɑmpənˈseɪʃən]", pos: "n.", meaning: "補償；薪酬", example: "The sales rep received generous compensation for his hard work." },
+      { word: "Procurement", kk: "[prəˈkjʊrmənt]", pos: "n.", meaning: "採購；取得", example: "She is in charge of equipment procurement for the hospital." }
+    ];
 
     let userStats = JSON.parse(localStorage.getItem('toeic_stats')) || { total: 0, correct: 0 };
     let wrongBook = JSON.parse(localStorage.getItem('toeic_wrong_book')) || [];
@@ -428,20 +537,26 @@
 
       const quizCard = document.getElementById('quiz-card');
       const profileCard = document.getElementById('profile-card');
+      const gameCard = document.getElementById('game-card');
+
+      quizCard.style.display = 'none';
+      profileCard.style.display = 'none';
+      gameCard.style.display = 'none';
 
       if (sec === 'listening') {
         tabs[0].classList.add('active-listening');
         quizCard.style.display = 'block';
-        profileCard.style.display = 'none';
         fetchNewQuestionFromAI();
       } else if (sec === 'reading') {
         tabs[1].classList.add('active-reading');
         quizCard.style.display = 'block';
-        profileCard.style.display = 'none';
         fetchNewQuestionFromAI();
+      } else if (sec === 'game') {
+        tabs[2].classList.add('active-game');
+        gameCard.style.display = 'block';
+        loadNewGameWord();
       } else if (sec === 'profile') {
-        tabs[2].classList.add('active-profile');
-        quizCard.style.display = 'none';
+        tabs[3].classList.add('active-profile');
         profileCard.style.display = 'block';
         renderProfile();
       }
@@ -507,6 +622,7 @@
 
       document.getElementById('quiz-card').style.display = 'block';
       document.getElementById('profile-card').style.display = 'none';
+      document.getElementById('game-card').style.display = 'none';
 
       isAnswered = false;
       document.getElementById('analysis-box').style.display = 'none';
@@ -617,7 +733,6 @@
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
 
       const passageBox = document.getElementById('passage-box');
-      // 閱讀題顯示閱讀文章；聽力題隱藏文章，靠聽音檔作答
       if (q.passage && q.section !== 'listening') {
         passageBox.style.display = 'block';
         passageBox.innerHTML = formatText(q.passage);
@@ -629,9 +744,8 @@
       const isListening = (q.section === 'listening');
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
-      // Part 2 畫面上不顯示問題題目（真正多益考法）；Part 3/4 顯示針對音檔問的問題
       if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "";
+        document.getElementById('question-text').innerText = "🎧 請點擊上方按鈕聆聽題目與選項。";
       } else {
         document.getElementById('question-text').innerHTML = formatText(q.question);
       }
@@ -657,7 +771,7 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      // 多層次防呆音檔取材：audioScript -> passage -> script -> question -> options
+      // 多層次防呆音檔取材：audioScript -> passage -> script -> question -> options (保證 100% 有音檔)
       let rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
         : (currentQuestion.audioScript || currentQuestion.passage || currentQuestion.script || currentQuestion.question);
@@ -694,7 +808,7 @@
           isMan = (currentLineIndex % 2 === 1);
         }
 
-        // 精準清洗角色標籤：只有接續冒號 (:) 或連字號 (-) 時才抽離，不誤傷 Would / When
+        // 精準清洗角色前綴 (例如 Woman:, Man:, W:, M:)，不誤刪音檔文義
         let cleanText = originalLine
           .replace(/^\s*\(?\s*(woman|man|female|male|speaker\s*\d+)\s*\)?\s*[:：.-]\s*/i, '')
           .replace(/^\s*\(?\s*[wm]\s*\)?\s*[:：.-]\s*/i, '')
@@ -855,6 +969,81 @@
       `;
 
       document.getElementById('next-btn').style.display = 'block';
+    }
+
+    /* --- 單字遊戲邏輯區塊 --- */
+    function switchGameMode(mode) {
+      currentGameMode = mode;
+      document.getElementById('mode-card-btn').className = `game-mode-btn ${mode === 'card' ? 'active' : ''}`;
+      document.getElementById('mode-quiz-btn').className = `game-mode-btn ${mode === 'quiz' ? 'active' : ''}`;
+
+      document.getElementById('game-flashcard-mode').style.display = mode === 'card' ? 'block' : 'none';
+      document.getElementById('game-quiz-mode').style.display = mode === 'quiz' ? 'block' : 'none';
+
+      loadNewGameWord();
+    }
+
+    function toggleFlashcard() {
+      document.getElementById('flashcard').classList.toggle('flipped');
+    }
+
+    function loadNewGameWord() {
+      document.getElementById('flashcard').classList.remove('flipped');
+      const randomIdx = Math.floor(Math.random() * toeicVocabularyBank.length);
+      currentGameWord = toeicVocabularyBank[randomIdx];
+
+      // 載入 Flashcard 內容
+      document.getElementById('card-word').innerText = currentGameWord.word;
+      document.getElementById('card-kk').innerText = currentGameWord.kk;
+      document.getElementById('card-pos').innerText = currentGameWord.pos;
+      document.getElementById('card-meaning').innerText = currentGameWord.meaning;
+      document.getElementById('card-example').innerText = `例句: "${currentGameWord.example}"`;
+
+      // 載入 Quiz 測驗內容
+      document.getElementById('game-quiz-word').innerText = currentGameWord.word;
+      document.getElementById('game-quiz-kk').innerText = currentGameWord.kk;
+      document.getElementById('game-quiz-feedback').style.display = 'none';
+
+      // 產生 4 個選項（包含 1 個正確，3 個干擾）
+      let choices = [currentGameWord.meaning];
+      let otherWords = toeicVocabularyBank.filter(w => w.word !== currentGameWord.word);
+      while (choices.length < 4 && otherWords.length > 0) {
+        let rand = Math.floor(Math.random() * otherWords.length);
+        choices.push(otherWords[rand].meaning);
+        otherWords.splice(rand, 1);
+      }
+      choices.sort(() => Math.random() - 0.5);
+
+      const quizBox = document.getElementById('game-quiz-options');
+      quizBox.innerHTML = '';
+      choices.forEach(meaning => {
+        const btn = document.createElement('button');
+        btn.className = 'opt-btn';
+        btn.innerText = meaning;
+        btn.onclick = () => checkGameQuizAnswer(btn, meaning === currentGameWord.meaning);
+        quizBox.appendChild(btn);
+      });
+    }
+
+    function checkGameQuizAnswer(selectedBtn, isCorrect) {
+      const allBtns = document.querySelectorAll('#game-quiz-options .opt-btn');
+      allBtns.forEach(b => b.disabled = true);
+
+      const feedback = document.getElementById('game-quiz-feedback');
+      feedback.style.display = 'block';
+
+      if (isCorrect) {
+        selectedBtn.classList.add('correct');
+        feedback.innerText = "🎉 答對了！太棒了！";
+        feedback.style.color = "#059669";
+      } else {
+        selectedBtn.classList.add('incorrect');
+        feedback.innerText = `❌ 答錯囉！正確意思為：「${currentGameWord.meaning}」`;
+        feedback.style.color = "#DC2626";
+        allBtns.forEach(b => {
+          if (b.innerText === currentGameWord.meaning) b.classList.add('correct');
+        });
+      }
     }
   </script>
 </body>
