@@ -549,7 +549,7 @@
       "appear": { en: "A colorful rainbow suddenly appeared after the short rain shower.", cn: "陣雨過後天空突然出現一道彩虹。" },
       "apple": { en: "Eating an apple every morning keeps you energized.", cn: "每天早上吃一顆蘋果能讓你保持精力充沛。" },
       "area": { en: "There are several nice public parks in this quiet residential area.", cn: "在這個安靜的住宅區裡有幾個很棒的公立公園。" },
-      "arm": { en: "He injured his left arm while playing volleyball yesterday.", cn: "他昨天打排球時左手臂受傷了。" },
+      "arm": { en: "He injured his left arm while playing volleyball yesterday.", cn: "他 lab著受傷了。" },
       "army": { en: "His elder brother joined the army after graduating from college.", cn: "他哥哥大學畢業後加入了陸軍。" },
       "around": { en: "They drove slowly around the historic town to take photos.", cn: "他們開著車繞著古鎮慢行拍照。" },
       "art": { en: "Visiting contemporary art museums is her favorite weekend activity.", cn: "參觀當代藝術博物館是她最喜歡的週末活動。" },
@@ -943,7 +943,7 @@
       if (!q) return false;
       const partName = (q.partName || '').toLowerCase();
       const part = (q.part || '').toLowerCase();
-      return partName.includes('part 2') || partName.includes('part2') || part === 'p2';
+      return partName.includes('part 2') || partName.includes('part2') || part.includes('p2') || partName.includes('question-response') || part.includes('question-response');
     }
 
     function renderQuestion(q) {
@@ -964,8 +964,9 @@
       const isListening = (q.section === 'listening' || currentSection === 'listening');
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
+      // Part 2 (Question-Response) 題目隱藏，因為題目只會在音檔中直接播出
       if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "";
+        document.getElementById('question-text').innerHTML = '<span style="color: #64748B; font-style: italic;">🎧 （此題型題目無文字，請點擊上方按鈕聽取音檔作答）</span>';
       } else {
         document.getElementById('question-text').innerHTML = formatText(q.question);
       }
@@ -987,10 +988,14 @@
       });
     }
 
-    // 聽力語音播放引擎（支援暫停切換、去除語音人名標籤、強固音檔來源）
+    // 聽力語音播放引擎（徹底過濾 Markdown/人名標籤、實作雙人男女聲切換、隱藏問句）
     function playCurrentAudio() {
       if (!currentQuestion) return;
       resetAudioUI();
+
+      if (systemVoices.length === 0) {
+        systemVoices = window.speechSynthesis.getVoices();
+      }
 
       let linesToSpeak = [];
 
@@ -1003,7 +1008,6 @@
         linesToSpeak = script.split(/\r?\n/).filter(line => line.trim() !== '');
       }
 
-      // 多重降級保護：若皆無內容，強行取用題目文字，確保必定有聲音可播放
       if (linesToSpeak.length === 0 && currentQuestion.question) {
         linesToSpeak = [currentQuestion.question];
       }
@@ -1017,15 +1021,15 @@
       const speedSelect = document.getElementById('playback-speed');
       const selectedRate = parseFloat(speedSelect.value) || 1.0;
 
-      const enVoices = systemVoices.filter(v => v.lang.startsWith('en'));
+      const enVoices = systemVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
       
-      let femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen|siri|fiona|hazel|google us english/i.test(v.name)) || enVoices[0];
-      let maleVoice = enVoices.find(v => /male|david|alex|george|daniel|richard|james/i.test(v.name));
+      let femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen|siri|fiona|hazel|google us english|google uk english female|eva|jenny|aria/i.test(v.name));
+      let maleVoice = enVoices.find(v => /male|david|alex|george|daniel|richard|james|guy|ryan|google uk english male/i.test(v.name));
 
-      if (!maleVoice && enVoices.length > 1) {
-        maleVoice = enVoices.find(v => v !== femaleVoice) || enVoices[1];
+      if (!femaleVoice) femaleVoice = enVoices[0] || null;
+      if (!maleVoice) {
+        maleVoice = enVoices.find(v => v !== femaleVoice) || enVoices[1] || enVoices[0] || null;
       }
-      if (!maleVoice) maleVoice = femaleVoice;
 
       let currentLineIndex = 0;
       let lastSpeakerWasMan = false;
@@ -1036,10 +1040,14 @@
           return;
         }
 
-        const originalLine = linesToSpeak[currentLineIndex++];
+        const rawLine = linesToSpeak[currentLineIndex++];
         
-        const isExplicitMan = /^\s*\(?\s*(man|male|speaker\s*1|person\s*1|m)\s*\)?\s*[:：.-]/i.test(originalLine);
-        const isExplicitWoman = /^\s*\(?\s*(woman|female|speaker\s*2|person\s*2|w)\s*\)?\s*[:：.-]/i.test(originalLine);
+        // 1. 先除去 Markdown 語法 (如 **Woman:** 或 *Man:*)
+        let lineCleanedOfMarkdown = rawLine.replace(/\*+/g, '').replace(/[`_]/g, '').trim();
+
+        // 2. 判斷男/女說話者
+        const isExplicitMan = /^\s*\(?\s*(man|male|speaker\s*1|person\s*1|m)\s*\)?\s*[:：.-]/i.test(lineCleanedOfMarkdown);
+        const isExplicitWoman = /^\s*\(?\s*(woman|female|speaker\s*2|person\s*2|w)\s*\)?\s*[:：.-]/i.test(lineCleanedOfMarkdown);
         
         let isMan = false;
         if (isExplicitMan) {
@@ -1053,8 +1061,8 @@
           lastSpeakerWasMan = isMan;
         }
 
-        // 徹底除錯：強效過濾掉各種 Woman: / Man: / Speaker X: 標籤與提示文字，讓語音僅朗讀對話內容
-        let cleanText = originalLine
+        // 3. 徹底掃除 Woman: / Man: / Speaker X: 標籤與提示文字，讓語音僅朗讀對話內容
+        let cleanText = lineCleanedOfMarkdown
           .replace(/^\s*\(?\s*(woman|man|female|male|speaker\s*\d+|person\s*\d+|narrator|w|m)\s*\)?\s*[:：.-]\s*/i, '')
           .replace(/^\s*Question\s*[:：.-]\s*/i, '')
           .replace(/\[[^\]]*\]/g, '')
@@ -1071,11 +1079,11 @@
 
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
-          utterance.pitch = 0.55; 
+          utterance.pitch = (maleVoice && maleVoice !== femaleVoice) ? 0.9 : 0.6;
           utterance.rate = selectedRate * 0.95;
         } else {
           if (femaleVoice) utterance.voice = femaleVoice;
-          utterance.pitch = 1.45; 
+          utterance.pitch = (maleVoice && maleVoice !== femaleVoice) ? 1.1 : 1.4;
           utterance.rate = selectedRate * 1.05;
         }
 
