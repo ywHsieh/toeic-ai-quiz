@@ -154,12 +154,26 @@
     }
     .vocab-table th, .vocab-table td {
       border: 1px solid #E5E7EB;
-      padding: 6px 10px;
+      padding: 6px 8px;
       text-align: left;
     }
     .vocab-table th {
       background-color: #F1F5F9;
       color: #334155;
+    }
+
+    .btn-audio-sm {
+      background: #DBEAFE;
+      color: #1E40AF;
+      border: none;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-audio-sm:hover {
+      background: #BFDBFE;
     }
 
     .next-btn { width: 100%; margin-top: 14px; padding: 12px; background: #111827; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
@@ -387,16 +401,25 @@
       document.getElementById('custom-modal').style.display = 'none';
     }
 
-    // 格式化換行與重點標題
+    // 格式化文字，去除「選項」多餘字樣並統一換行
     function formatText(str) {
       if (!str) return '';
       let formatted = str
         .replace(/\\n/g, '\n')
+        .replace(/(選項解析)[:：]?/gi, '\n<strong>🔍 選項解析：</strong>\n')
         .replace(/(題目解析|考點說明|情境說明)[:：]?/gi, '\n<strong>💡 $1：</strong>\n')
-        .replace(/(選項解析)[:：]?/gi, '\n<strong>🔍 $1：</strong>\n')
+        .replace(/選項\s*(\([A-D]\))/gi, '$1') // 移除「選項 (A)」多餘字詞
         .replace(/(\([A-D]\))/g, '\n$1');
 
-      return formatted.trim().replace(/\n/g, '<br>');
+      return formatted.trim().replace(/\n+/g, '<br>');
+    }
+
+    // 格式化聽力對話逐字稿 (自動分行呈現)
+    function formatTranscript(script) {
+      if (!script) return '';
+      let clean = script.replace(/【[^】]+】/g, '').trim();
+      let lines = clean.split(/\r?\n/).filter(line => line.trim() !== '');
+      return lines.join('<br>');
     }
 
     function selectSection(sec) {
@@ -472,7 +495,7 @@
       `).join('');
     }
 
-    // 錯題複習機制：直接渲染原題目並允許重新解答作答
+    // 點擊錯題本中的複習按鈕時重新練習題目
     function reviewWrongQuestion(index) {
       const q = wrongBook[index];
       currentSection = q.section || 'listening';
@@ -486,12 +509,11 @@
       document.getElementById('quiz-card').style.display = 'block';
       document.getElementById('profile-card').style.display = 'none';
 
-      // 重新重置答題狀態
       isAnswered = false;
       document.getElementById('analysis-box').style.display = 'none';
       document.getElementById('next-btn').style.display = 'none';
 
-      renderQuestion(q, false); // 第二個參數代表不重新打散選項
+      renderQuestion(q, false);
     }
 
     function removeWrongQuestion(index) {
@@ -520,9 +542,16 @@
       }
     }
 
+    // 檢查是否為錯題本中已存在的題目
+    function isQuestionInWrongBook(qText) {
+      return wrongBook.some(item => item.question === qText);
+    }
+
     async function fetchNewQuestionFromAI() {
       if (isFetching) return;
       isFetching = true;
+
+      window.speechSynthesis.cancel(); // 切換題目時停止上一題的語音
 
       const loadingEl = document.getElementById('loading');
       const loadingText = document.getElementById('loading-text');
@@ -531,31 +560,39 @@
       document.getElementById('next-btn').style.display = 'none';
       isAnswered = false;
 
-      loadingText.innerText = "⚡ AI 生成題目中，請耐心等候...";
+      loadingText.innerText = "⚡ 題目產生中，請耐心等候...";
       loadingEl.style.display = 'flex';
 
-      // 聽力題型隨機抽取 p2, p3, p4 (完全排除 p1 圖片題)
       const parts = currentSection === 'listening' ? ['p2', 'p3', 'p4'] : ['p5', 'p6', 'p7'];
       const randomPart = parts[Math.floor(Math.random() * parts.length)];
 
+      let maxAttempts = 3;
+      let fetchedQ = null;
+
       try {
-        const response = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ currentSection, randomPart })
-        });
+        for (let i = 0; i < maxAttempts; i++) {
+          const response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentSection, randomPart })
+          });
 
-        const data = await response.json();
+          const data = await response.json();
+          if (!response.ok || data.error) throw new Error(data.error || "中繼站回應異常");
 
-        if (!response.ok || data.error) {
-          throw new Error(data.error || "中繼站回應異常");
+          let rawJsonStr = data.candidates[0].content.parts[0].text;
+          rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+          let parsedQ = JSON.parse(rawJsonStr);
+
+          // 若產生的題目在錯題本中已存在，自動重新抓取避免重複
+          if (!isQuestionInWrongBook(parsedQ.question) || i === maxAttempts - 1) {
+            fetchedQ = parsedQ;
+            break;
+          }
         }
 
-        let rawJsonStr = data.candidates[0].content.parts[0].text;
-        rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-
-        currentQuestion = JSON.parse(rawJsonStr);
-        renderQuestion(currentQuestion, true); // 隨機打散選項與答案
+        currentQuestion = fetchedQ;
+        renderQuestion(currentQuestion, true);
       } catch (err) {
         console.error("解析失敗詳情：", err);
         showCustomError("AI 努力生成題目中，建議稍候片刻後再試一次！", "出題提示");
@@ -572,19 +609,15 @@
       return partName.includes('part 2') || partName.includes('part2') || part === 'p2';
     }
 
-    // 隨機打散選項並同步更新 correct index
     function shuffleOptions(q) {
       if (!q || !q.options) return;
-      
       const correctOptionText = q.options[q.answer];
       
-      // 洗牌演算法
       for (let i = q.options.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [q.options[i], q.options[j]] = [q.options[j], q.options[i]];
       }
 
-      // 更新答案 index
       q.answer = q.options.findIndex(opt => opt === correctOptionText);
     }
 
@@ -610,9 +643,9 @@
       const isListening = (q.section === 'listening');
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
-      // Part 2 Question-Response 題目不顯示於畫面上，提交後才顯示
+      // Part 2 答題前隱藏題目文字
       if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "🔊 點擊播放聽力語音";
+        document.getElementById('question-text').innerText = "";
       } else {
         document.getElementById('question-text').innerHTML = formatText(q.question);
       }
@@ -632,18 +665,13 @@
         btn.onclick = () => handleAnswer(i);
         optionsBox.appendChild(btn);
       });
-
-      if (isPart2(q)) {
-        setTimeout(() => playCurrentAudio(), 300);
-      }
     }
 
-    // 多角色聽力朗讀語音
+    // 🔊 朗讀聽力音檔內容（點擊按鈕才播放，自動過濾 Woman:/Man: 前綴字元）
     function playCurrentAudio() {
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      // 音檔朗讀內容處理
       const rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
         : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.passage || currentQuestion.question);
@@ -663,10 +691,9 @@
         if (currentLineIndex >= lines.length) return;
 
         const originalLine = lines[currentLineIndex++];
-        
-        // 辨識 Man / Woman 角色語音
         const isMan = /(^|\s|\()(man|male|speaker\s*1|m)(\b|[:：\)])/i.test(originalLine);
 
+        // 徹底去除 Woman: / Man: / (W) / (M) 角色文字標記，不朗讀出聲
         let cleanText = originalLine
           .replace(/^(\s*\(?\s*(man|woman|male|female|speaker\s*\d+|m|w)\s*\)?\s*[:：.-]*)/i, '')
           .replace(/^[^:：]+[:：]\s*/, '')
@@ -699,11 +726,20 @@
       speakNextLine();
     }
 
+    // 單獨朗讀多益重要單字發音
+    function speakSingleWord(wordText) {
+      if (!wordText) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(wordText);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+
     function handleAnswer(selectedIndex) {
       if (isAnswered) return;
       isAnswered = true;
 
-      // Part 2 提交答案後顯示題目完整內容
       if (isPart2(currentQuestion)) {
         document.getElementById('question-text').innerHTML = formatText(currentQuestion.question);
       }
@@ -740,7 +776,7 @@
 
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && scriptContent) {
-        let cleanScript = formatText(scriptContent.replace(/【[^】]+】/g, '').trim());
+        let cleanScript = formatTranscript(scriptContent);
 
         transcriptHtml = `
           <div class="transcript-box" style="margin-bottom: 16px;">
@@ -762,11 +798,16 @@
         `;
       }
 
+      // 新增 KK 音標欄位與單字發音按鈕的表格
       let vocabHtml = '';
       if (currentQuestion.vocabularies && currentQuestion.vocabularies.length > 0) {
         let rows = currentQuestion.vocabularies.map(v => `
           <tr>
-            <td><strong>${v.word}</strong></td>
+            <td>
+              <strong>${v.word}</strong>
+              <button class="btn-audio-sm" onclick="speakSingleWord('${v.word.replace(/'/g, "\\'")}')">🔊</button>
+            </td>
+            <td><small style="color:#64748B;">[${v.kk || v.phonetic || ''}]</small></td>
             <td><em>${v.pos}</em></td>
             <td>${v.meaning}</td>
           </tr>
@@ -777,7 +818,12 @@
             <div class="analysis-title">📚 多益重要單字：</div>
             <table class="vocab-table">
               <thead>
-                <tr><th>單字 / 片語</th><th>詞性</th><th>中文意思</th></tr>
+                <tr>
+                  <th>單字 / 片語</th>
+                  <th>KK 音標</th>
+                  <th>詞性</th>
+                  <th>中文意思</th>
+                </tr>
               </thead>
               <tbody>${rows}</tbody>
             </table>
