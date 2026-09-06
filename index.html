@@ -986,11 +986,11 @@
       if (isAnswered) return;
       isAnswered = true;
 
-      // 作答後，停止發音，並將 Part 2 題目揭示出來
+      // // 作答後，停止發音，並將 Part 2 題目揭示出來
       window.speechSynthesis.cancel();
-      if (isPart2(currentQuestion)) {
-        document.getElementById('question-text').innerHTML = formatText(currentQuestion.question);
-      }
+      // if (isPart2(currentQuestion)) {
+      //   document.getElementById('question-text').innerHTML = formatText(currentQuestion.question);
+      // }
 
       const isCorrect = selectedIndex === currentQuestion.answer;
       
