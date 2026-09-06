@@ -464,14 +464,11 @@
     let isAnswered = false;
     let isFetching = false;
 
-    // 已出現過的題目緩存紀錄（避免當次 Session 出現重複題目）
     let seenQuestionsList = [];
 
-    // 單字庫遊戲資料與不重複抽樣機制
     let currentGameWord = null;
     let currentGameMode = 'card';
 
-    // 完整的大考中心 7000 英文單字庫
     const raw7000WordsData = [
       ["a/an", "art.", "一(個)"], ["able", "adj.", "能，可以"], ["about", "prep.", "關於"], ["above", "prep.", "在...上面"],
       ["across", "prep.", "穿過"], ["act", "vt.", "扮演"], ["action", "n.", "行動"], ["actor", "n.", "男演員"],
@@ -489,7 +486,6 @@
       ["Agenda", "n.", "議程；討論事項"], ["Compliance", "n.", "順從；合規"], ["Accommodate", "v.", "容納；提供住宿"]
     ];
 
-    // 精確分類與多元句型生成器
     function generateToeicExample(word, pos, meaning) {
       const cleanMeaning = meaning.split('；')[0].split('（')[0].replace(/[a-zA-Z0-9\.\s]/g, '');
       const lowerWord = word.toLowerCase();
@@ -501,8 +497,7 @@
       }
       const choice = Math.abs(hash) % 5;
 
-      // 精確詞性判定邏輯
-      if (lowerPos.startsWith('v')) { // 動詞 (vt., vi., v.)
+      if (lowerPos.startsWith('v')) {
         const templates = [
           { en: `We need to ${lowerWord} the original plan before the client arrives.`, cn: `我們需要在客戶抵達前${cleanMeaning}原定計畫。` },
           { en: `The management decided to ${lowerWord} new strategies to boost sales.`, cn: `管理層決定${cleanMeaning}新策略以提升銷售額。` },
@@ -511,7 +506,7 @@
           { en: `Our team will ${lowerWord} closely with external contractors next week.`, cn: `我們團隊將在下週與外部承包商緊密${cleanMeaning}。` }
         ];
         return templates[choice];
-      } else if (lowerPos.startsWith('adj')) { // 形容詞 (adj.)
+      } else if (lowerPos.startsWith('adj')) {
         const templates = [
           { en: `The company achieved a ${lowerWord} outcome in the recent audit.`, cn: `公司在近期的審計中取得了${cleanMeaning}的成果。` },
           { en: `Please make sure that the reported data remains completely ${lowerWord}.`, cn: `請確保所呈報的數據保持絕對的${cleanMeaning}。` },
@@ -520,7 +515,7 @@
           { en: `This new policy brings ${lowerWord} benefits to all employees.`, cn: `這項新政策為所有員工帶來了${cleanMeaning}的好處。` }
         ];
         return templates[choice];
-      } else if (lowerPos.startsWith('adv')) { // 副詞 (adv.)
+      } else if (lowerPos.startsWith('adv')) {
         const templates = [
           { en: `The project was completed ${lowerWord} thanks to the team's effort.`, cn: `多虧了團隊的努力，專案得以${cleanMeaning}地完成。` },
           { en: `Please respond ${lowerWord} to confirm your attendance at the conference.`, cn: `請${cleanMeaning}回覆以確認您是否出席研討會。` },
@@ -529,7 +524,7 @@
           { en: `Our client handled the negotiation process ${lowerWord}.`, cn: `我們的客戶在談判過程中處理得相當${cleanMeaning}。` }
         ];
         return templates[choice];
-      } else if (lowerPos.startsWith('prep') || lowerPos.startsWith('conj') || lowerPos.startsWith('art')) { // 介系詞、連接詞、冠詞
+      } else if (lowerPos.startsWith('prep') || lowerPos.startsWith('conj') || lowerPos.startsWith('art')) {
         const templates = [
           { en: `Please submit your application ${lowerWord} the stated deadline.`, cn: `請在規定的截止日期前${cleanMeaning}提出申請。` },
           { en: `The conference will take place ${lowerWord} the main auditorium.`, cn: `研討會將會在主禮堂${cleanMeaning}舉行。` },
@@ -538,7 +533,7 @@
           { en: `You can contact customer service ${lowerWord} phone or email.`, cn: `您可以透過電話或電子郵件${cleanMeaning}聯繫客戶服務。` }
         ];
         return templates[choice];
-      } else { // 名詞 (n.) 及其他預設
+      } else {
         const templates = [
           { en: `The team presented a detailed report on the new ${lowerWord}.`, cn: `團隊提交了一份關於全新${cleanMeaning}的詳細報告。` },
           { en: `Effective management of ${lowerWord} is crucial for business growth.`, cn: `有效管理${cleanMeaning}對於企業成長至關重要。` },
@@ -644,6 +639,7 @@
     }
 
     function selectSection(sec) {
+      // 切換分頁時，強制停止目前正進行的語音發音
       window.speechSynthesis.cancel();
 
       if (currentSection === sec && sec !== 'profile') return;
@@ -781,6 +777,7 @@
       if (isFetching) return;
       isFetching = true;
 
+      // 切換/獲取新題目時停止舊音檔
       window.speechSynthesis.cancel();
 
       const loadingEl = document.getElementById('loading');
@@ -817,7 +814,6 @@
           rawJsonStr = rawJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
           let parsedQ = JSON.parse(rawJsonStr);
 
-          // 檢查是否已出現過或在錯題本中
           if (!isQuestionSeenOrInWrongBook(parsedQ.question) || i === maxAttempts - 1) {
             fetchedQ = parsedQ;
             seenQuestionsList.push(parsedQ.question);
@@ -858,15 +854,17 @@
         passageBox.style.display = 'none';
       }
 
+      // 強制聽力練習皆顯示音檔播放列
       const audioContainer = document.getElementById('audio-control-container');
       const isListening = (q.section === 'listening');
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
-      if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "🎧 請點擊上方按鈕聆聽題目與選項。";
-      } else {
-        document.getElementById('question-text').innerHTML = formatText(q.question);
-      }
+      // if (isPart2(q)) {
+      //   // 還原原邏輯：Part 2 答題前隱藏問句文字，引導使用播放按鈕
+      //   document.getElementById('question-text').innerText = "🎧 請點擊上方按鈕聆聽題目與選項。";
+      // } else {
+      //   document.getElementById('question-text').innerHTML = formatText(q.question);
+      // }
 
       const optionsBox = document.getElementById('options-box');
       optionsBox.innerHTML = '';
@@ -885,9 +883,10 @@
       });
     }
 
-    // 全面增強版聽力語音播放引擎
+    // 聽力語音播放引擎（雙聲道辨識度增強版）
     function playCurrentAudio() {
       if (!currentQuestion) return;
+      // 點擊新的播放鍵，立即中斷舊有的語音
       window.speechSynthesis.cancel();
 
       let linesToSpeak = [];
@@ -910,8 +909,14 @@
       const selectedRate = parseFloat(speedSelect.value) || 1.0;
 
       const enVoices = systemVoices.filter(v => v.lang.startsWith('en'));
-      const femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen|siri/i.test(v.name)) || enVoices[0];
-      const maleVoice = enVoices.find(v => /male|david|alex|george|daniel/i.test(v.name)) || enVoices[1] || enVoices[0];
+      
+      let femaleVoice = enVoices.find(v => /female|zira|samantha|victoria|karen|siri|google us english/i.test(v.name)) || enVoices[0];
+      let maleVoice = enVoices.find(v => /male|david|alex|george|daniel/i.test(v.name));
+
+      if (!maleVoice && enVoices.length > 1) {
+        maleVoice = enVoices.find(v => v !== femaleVoice) || enVoices[1];
+      }
+      if (!maleVoice) maleVoice = femaleVoice;
 
       let currentLineIndex = 0;
 
@@ -945,14 +950,16 @@
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'en-US';
-        utterance.rate = selectedRate;
 
+        // 提高聲音差異度：針對男女聲實施顯著不同的 Pitch 與 Rate 對比
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
-          utterance.pitch = 0.7;
+          utterance.pitch = 0.55; 
+          utterance.rate = selectedRate * 0.95;
         } else {
           if (femaleVoice) utterance.voice = femaleVoice;
-          utterance.pitch = 1.35;
+          utterance.pitch = 1.45; 
+          utterance.rate = selectedRate * 1.05;
         }
 
         utterance.onend = speakNextLine;
@@ -976,6 +983,8 @@
       if (isAnswered) return;
       isAnswered = true;
 
+      // 作答後，停止發音，並將 Part 2 題目揭示出來
+      window.speechSynthesis.cancel();
       if (isPart2(currentQuestion)) {
         document.getElementById('question-text').innerHTML = formatText(currentQuestion.question);
       }
@@ -1093,8 +1102,8 @@
       document.getElementById('next-btn').style.display = 'block';
     }
 
-    /* --- 單字遊戲邏輯區塊 (7000 單字不重複抽樣) --- */
     function switchGameMode(mode) {
+      window.speechSynthesis.cancel();
       currentGameMode = mode;
       document.getElementById('mode-card-btn').className = `game-mode-btn ${mode === 'card' ? 'active' : ''}`;
       document.getElementById('mode-quiz-btn').className = `game-mode-btn ${mode === 'quiz' ? 'active' : ''}`;
@@ -1110,6 +1119,7 @@
     }
 
     function loadNewGameWord() {
+      window.speechSynthesis.cancel();
       document.getElementById('flashcard').classList.remove('flipped');
       initializeWordPool();
 
@@ -1150,6 +1160,7 @@
     }
 
     function checkGameQuizAnswer(selectedBtn, isCorrect) {
+      window.speechSynthesis.cancel();
       const allBtns = document.querySelectorAll('#game-quiz-options .opt-btn');
       allBtns.forEach(b => b.disabled = true);
 
