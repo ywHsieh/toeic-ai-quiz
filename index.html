@@ -631,7 +631,7 @@
 
       // Part 2 畫面上不顯示問題題目（真正多益考法）；Part 3/4 顯示針對音檔問的問題
       if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "🎧 請點擊上方按鈕聆聽題目與選項。";
+        document.getElementById('question-text').innerText = "";
       } else {
         document.getElementById('question-text').innerHTML = formatText(q.question);
       }
