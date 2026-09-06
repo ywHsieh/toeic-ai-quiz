@@ -860,7 +860,7 @@
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
       if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "🎧 請點擊上方按鈕聆聽題目與選項。";
+        document.getElementById('question-text').innerText = "";
       } else {
         document.getElementById('question-text').innerHTML = formatText(q.question);
       }
