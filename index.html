@@ -807,7 +807,7 @@
               <strong>${v.word}</strong>
               <button class="btn-audio-sm" onclick="speakSingleWord('${v.word.replace(/'/g, "\\'")}')">🔊</button>
             </td>
-            <td><small style="color:#64748B;">[${v.kk || v.phonetic || ''}]</small></td>
+            <td><small style="color:#64748B;">${v.kk || v.phonetic || ''}</small></td>
             <td><em>${v.pos}</em></td>
             <td>${v.meaning}</td>
           </tr>
