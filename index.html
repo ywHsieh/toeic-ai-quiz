@@ -70,6 +70,20 @@
     .btn-audio { flex: 3; background-color: var(--primary-listening); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; transition: opacity 0.2s; }
     .btn-audio:hover { opacity: 0.9; }
 
+    .btn-pause {
+      flex: 1;
+      background-color: #4B5563;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: opacity 0.2s;
+    }
+    .btn-pause:hover { opacity: 0.9; }
+
     .speed-select {
       flex: 1;
       padding: 0 8px;
@@ -347,6 +361,9 @@
         <button id="audio-btn" class="btn-audio" onclick="playCurrentAudio()">
           🔊 點擊播放聽力語音
         </button>
+        <button id="pause-btn" class="btn-pause" style="display:none;" onclick="togglePauseAudio()">
+          ⏸️ 暫停
+        </button>
         <select id="playback-speed" class="speed-select">
           <option value="0.5">0.5x 慢速</option>
           <option value="0.75">0.75x 練習</option>
@@ -463,6 +480,7 @@
     let currentQuestion = null;
     let isAnswered = false;
     let isFetching = false;
+    let isAudioPaused = false;
 
     let seenQuestionsList = [];
 
@@ -643,6 +661,16 @@
       fetchNewQuestionFromAI();
     };
 
+    function resetAudioUI() {
+      window.speechSynthesis.cancel();
+      isAudioPaused = false;
+      const pauseBtn = document.getElementById('pause-btn');
+      if (pauseBtn) {
+        pauseBtn.style.display = 'none';
+        pauseBtn.innerText = '⏸️ 暫停';
+      }
+    }
+
     function showCustomError(message, title = "系統提示", icon = "⚠️") {
       document.getElementById('modal-icon').innerText = icon;
       document.getElementById('modal-title').innerText = title;
@@ -719,7 +747,7 @@
     }
 
     function selectSection(sec) {
-      window.speechSynthesis.cancel();
+      resetAudioUI();
 
       if (currentSection === sec && sec !== 'profile') return;
       currentSection = sec;
@@ -800,7 +828,7 @@
     }
 
     function reviewWrongQuestion(index) {
-      window.speechSynthesis.cancel();
+      resetAudioUI();
 
       const q = wrongBook[index];
       currentSection = q.section || 'listening';
@@ -856,7 +884,7 @@
       if (isFetching) return;
       isFetching = true;
 
-      window.speechSynthesis.cancel();
+      resetAudioUI();
 
       const loadingEl = document.getElementById('loading');
       const loadingText = document.getElementById('loading-text');
@@ -933,7 +961,7 @@
       }
 
       const audioContainer = document.getElementById('audio-control-container');
-      const isListening = (q.section === 'listening');
+      const isListening = (q.section === 'listening' || currentSection === 'listening');
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
       if (isPart2(q)) {
@@ -959,14 +987,13 @@
       });
     }
 
-    // 聽力語音播放引擎（Part 2 不唸選項、全題型音檔強固綁定）
+    // 聽力語音播放引擎（支援暫停切換、去除語音人名標籤、強固音檔來源）
     function playCurrentAudio() {
       if (!currentQuestion) return;
-      window.speechSynthesis.cancel();
+      resetAudioUI();
 
       let linesToSpeak = [];
 
-      // Part 2 Question-Response 只朗讀題目問句，絕對不唸出選項
       if (isPart2(currentQuestion)) {
         let script = currentQuestion.question || currentQuestion.audioScript || '';
         let firstLine = script.split(/\r?\n/)[0];
@@ -976,7 +1003,16 @@
         linesToSpeak = script.split(/\r?\n/).filter(line => line.trim() !== '');
       }
 
+      // 多重降級保護：若皆無內容，強行取用題目文字，確保必定有聲音可播放
+      if (linesToSpeak.length === 0 && currentQuestion.question) {
+        linesToSpeak = [currentQuestion.question];
+      }
+
       if (linesToSpeak.length === 0) return;
+
+      const pauseBtn = document.getElementById('pause-btn');
+      pauseBtn.style.display = 'block';
+      pauseBtn.innerText = '⏸️ 暫停';
 
       const speedSelect = document.getElementById('playback-speed');
       const selectedRate = parseFloat(speedSelect.value) || 1.0;
@@ -995,12 +1031,15 @@
       let lastSpeakerWasMan = false;
 
       function speakNextLine() {
-        if (currentLineIndex >= linesToSpeak.length) return;
+        if (currentLineIndex >= linesToSpeak.length) {
+          resetAudioUI();
+          return;
+        }
 
         const originalLine = linesToSpeak[currentLineIndex++];
         
-        const isExplicitMan = /^\s*\(?\s*(man|male|speaker\s*1|m)\s*\)?\s*[:：.-]/i.test(originalLine);
-        const isExplicitWoman = /^\s*\(?\s*(woman|female|speaker\s*2|w)\s*\)?\s*[:：.-]/i.test(originalLine);
+        const isExplicitMan = /^\s*\(?\s*(man|male|speaker\s*1|person\s*1|m)\s*\)?\s*[:：.-]/i.test(originalLine);
+        const isExplicitWoman = /^\s*\(?\s*(woman|female|speaker\s*2|person\s*2|w)\s*\)?\s*[:：.-]/i.test(originalLine);
         
         let isMan = false;
         if (isExplicitMan) {
@@ -1014,8 +1053,9 @@
           lastSpeakerWasMan = isMan;
         }
 
+        // 徹底除錯：強效過濾掉各種 Woman: / Man: / Speaker X: 標籤與提示文字，讓語音僅朗讀對話內容
         let cleanText = originalLine
-          .replace(/^\s*\(?\s*(woman|man|female|male|speaker\s*\d+|w|m)\s*\)?\s*[:：.-]\s*/i, '')
+          .replace(/^\s*\(?\s*(woman|man|female|male|speaker\s*\d+|person\s*\d+|narrator|w|m)\s*\)?\s*[:：.-]\s*/i, '')
           .replace(/^\s*Question\s*[:：.-]\s*/i, '')
           .replace(/\[[^\]]*\]/g, '')
           .replace(/【[^】]*】/g, '')
@@ -1040,16 +1080,31 @@
         }
 
         utterance.onend = speakNextLine;
-        utterance.onerror = speakNextLine;
+        utterance.onerror = () => resetAudioUI();
         window.speechSynthesis.speak(utterance);
       }
 
       speakNextLine();
     }
 
+    function togglePauseAudio() {
+      const pauseBtn = document.getElementById('pause-btn');
+      if (window.speechSynthesis.speaking) {
+        if (window.speechSynthesis.paused || isAudioPaused) {
+          window.speechSynthesis.resume();
+          isAudioPaused = false;
+          pauseBtn.innerText = '⏸️ 暫停';
+        } else {
+          window.speechSynthesis.pause();
+          isAudioPaused = true;
+          pauseBtn.innerText = '▶️ 繼續';
+        }
+      }
+    }
+
     function speakSingleWord(wordText) {
       if (!wordText) return;
-      window.speechSynthesis.cancel();
+      resetAudioUI();
       const utterance = new SpeechSynthesisUtterance(wordText);
       utterance.lang = 'en-US';
       utterance.rate = 0.9;
@@ -1060,7 +1115,7 @@
       if (isAnswered) return;
       isAnswered = true;
 
-      window.speechSynthesis.cancel();
+      resetAudioUI();
 
       const isCorrect = selectedIndex === currentQuestion.answer;
       
@@ -1176,7 +1231,7 @@
     }
 
     function switchGameMode(mode) {
-      window.speechSynthesis.cancel();
+      resetAudioUI();
       currentGameMode = mode;
       document.getElementById('mode-card-btn').className = `game-mode-btn ${mode === 'card' ? 'active' : ''}`;
       document.getElementById('mode-quiz-btn').className = `game-mode-btn ${mode === 'quiz' ? 'active' : ''}`;
@@ -1192,7 +1247,7 @@
     }
 
     function loadNewGameWord() {
-      window.speechSynthesis.cancel();
+      resetAudioUI();
       document.getElementById('flashcard').classList.remove('flipped');
       initializeWordPool();
 
@@ -1233,7 +1288,7 @@
     }
 
     function checkGameQuizAnswer(selectedBtn, isCorrect) {
-      window.speechSynthesis.cancel();
+      resetAudioUI();
       const allBtns = document.querySelectorAll('#game-quiz-options .opt-btn');
       allBtns.forEach(b => b.disabled = true);
 
