@@ -489,10 +489,11 @@
       ["Agenda", "n.", "議程；討論事項"], ["Compliance", "n.", "順從；合規"], ["Accommodate", "v.", "容納；提供住宿"]
     ];
 
+    // 精確分類與多元句型生成器
     function generateToeicExample(word, pos, meaning) {
       const cleanMeaning = meaning.split('；')[0].split('（')[0].replace(/[a-zA-Z0-9\.\s]/g, '');
       const lowerWord = word.toLowerCase();
-      const lowerPos = (pos || '').toLowerCase();
+      const lowerPos = (pos || '').toLowerCase().trim();
 
       let hash = 0;
       for (let i = 0; i < word.length; i++) {
@@ -500,7 +501,8 @@
       }
       const choice = Math.abs(hash) % 5;
 
-      if (lowerPos.includes('v')) {
+      // 精確詞性判定邏輯
+      if (lowerPos.startsWith('v')) { // 動詞 (vt., vi., v.)
         const templates = [
           { en: `We need to ${lowerWord} the original plan before the client arrives.`, cn: `我們需要在客戶抵達前${cleanMeaning}原定計畫。` },
           { en: `The management decided to ${lowerWord} new strategies to boost sales.`, cn: `管理層決定${cleanMeaning}新策略以提升銷售額。` },
@@ -509,7 +511,7 @@
           { en: `Our team will ${lowerWord} closely with external contractors next week.`, cn: `我們團隊將在下週與外部承包商緊密${cleanMeaning}。` }
         ];
         return templates[choice];
-      } else if (lowerPos.includes('adj')) {
+      } else if (lowerPos.startsWith('adj')) { // 形容詞 (adj.)
         const templates = [
           { en: `The company achieved a ${lowerWord} outcome in the recent audit.`, cn: `公司在近期的審計中取得了${cleanMeaning}的成果。` },
           { en: `Please make sure that the reported data remains completely ${lowerWord}.`, cn: `請確保所呈報的數據保持絕對的${cleanMeaning}。` },
@@ -518,7 +520,25 @@
           { en: `This new policy brings ${lowerWord} benefits to all employees.`, cn: `這項新政策為所有員工帶來了${cleanMeaning}的好處。` }
         ];
         return templates[choice];
-      } else {
+      } else if (lowerPos.startsWith('adv')) { // 副詞 (adv.)
+        const templates = [
+          { en: `The project was completed ${lowerWord} thanks to the team's effort.`, cn: `多虧了團隊的努力，專案得以${cleanMeaning}地完成。` },
+          { en: `Please respond ${lowerWord} to confirm your attendance at the conference.`, cn: `請${cleanMeaning}回覆以確認您是否出席研討會。` },
+          { en: `Sales figures have increased ${lowerWord} over the past two quarters.`, cn: `在過去兩個季度中，銷售數字已${cleanMeaning}成長。` },
+          { en: `The executive officer explained the new budget plan ${lowerWord}.`, cn: `執行長${cleanMeaning}地解釋了全新的預算計畫。` },
+          { en: `Our client handled the negotiation process ${lowerWord}.`, cn: `我們的客戶在談判過程中處理得相當${cleanMeaning}。` }
+        ];
+        return templates[choice];
+      } else if (lowerPos.startsWith('prep') || lowerPos.startsWith('conj') || lowerPos.startsWith('art')) { // 介系詞、連接詞、冠詞
+        const templates = [
+          { en: `Please submit your application ${lowerWord} the stated deadline.`, cn: `請在規定的截止日期前${cleanMeaning}提出申請。` },
+          { en: `The conference will take place ${lowerWord} the main auditorium.`, cn: `研討會將會在主禮堂${cleanMeaning}舉行。` },
+          { en: `All staff members must comply ${lowerWord} office regulations.`, cn: `所有員工都必須遵守與${cleanMeaning}相關的辦公室規定。` },
+          { en: `The meeting was rescheduled ${lowerWord} unexpected delays.`, cn: `會議因突發的延誤情況而${cleanMeaning}重新排程。` },
+          { en: `You can contact customer service ${lowerWord} phone or email.`, cn: `您可以透過電話或電子郵件${cleanMeaning}聯繫客戶服務。` }
+        ];
+        return templates[choice];
+      } else { // 名詞 (n.) 及其他預設
         const templates = [
           { en: `The team presented a detailed report on the new ${lowerWord}.`, cn: `團隊提交了一份關於全新${cleanMeaning}的詳細報告。` },
           { en: `Effective management of ${lowerWord} is crucial for business growth.`, cn: `有效管理${cleanMeaning}對於企業成長至關重要。` },
@@ -873,11 +893,9 @@
       let linesToSpeak = [];
 
       if (isPart2(currentQuestion)) {
-        // Part 2: 播放音檔逐字稿或題目與選項
         let script = currentQuestion.audioScript || currentQuestion.question;
         linesToSpeak = script.split(/\r?\n/).filter(line => line.trim() !== '');
       } else {
-        // Part 3/4 及其他聽力：必定先播放逐字稿，再播放問題與選項
         if (currentQuestion.audioScript) {
           linesToSpeak.push(...currentQuestion.audioScript.split(/\r?\n/).filter(line => line.trim() !== ''));
         }
@@ -902,7 +920,6 @@
 
         const originalLine = linesToSpeak[currentLineIndex++];
         
-        // 擴充說話者判斷之正則表示式
         const isExplicitMan = /(^|\s|\()?(man|male|speaker\s*1|m|man\s*\d+)[\:\)\s\.\-]/i.test(originalLine);
         const isExplicitWoman = /(^|\s|\()?(woman|female|speaker\s*2|w|woman\s*\d+)[\:\)\s\.\-]/i.test(originalLine);
         
