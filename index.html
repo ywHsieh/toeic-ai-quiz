@@ -419,6 +419,9 @@
     }
 
     function selectSection(sec) {
+      // 切換頁面時立刻停止當前播報音檔
+      window.speechSynthesis.cancel();
+
       if (currentSection === sec && sec !== 'profile') return;
       currentSection = sec;
       const tabs = document.querySelectorAll('.sec-tab');
@@ -492,6 +495,9 @@
     }
 
     function reviewWrongQuestion(index) {
+      // 點擊錯題複習時立刻停止音檔
+      window.speechSynthesis.cancel();
+
       const q = wrongBook[index];
       currentSection = q.section || 'listening';
       currentQuestion = q;
@@ -545,6 +551,7 @@
       if (isFetching) return;
       isFetching = true;
 
+      // 切換新題目時立刻停止舊語音
       window.speechSynthesis.cancel();
 
       const loadingEl = document.getElementById('loading');
@@ -651,6 +658,7 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
+      // 音檔來源順序支援：audioScript -> script -> passage -> question
       const rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
         : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.passage || currentQuestion.question);
@@ -672,10 +680,13 @@
         if (currentLineIndex >= lines.length) return;
 
         const originalLine = lines[currentLineIndex++];
+        
+        // 精準判定角色性別：Man / Male / Speaker 1 / M
         const isMan = /(^|\s|\()(man|male|speaker\s*1|m)(\b|[:：\)])/i.test(originalLine);
 
+        // 徹底過濾 Woman: / Man: / W: / M: / (W) / (M) 等前綴標記，完全不朗讀
         let cleanText = originalLine
-          .replace(/^(\s*\(?\s*(man|woman|male|female|speaker\s*\d+|m|w)\s*\)?\s*[:：.-]*)/i, '')
+          .replace(/^(\s*\(?\s*(woman|man|female|male|speaker\s*\d+|w|m)\s*\)?\s*[:：.-]*)/i, '')
           .replace(/^[^:：]+[:：]\s*/, '')
           .replace(/\([^)]*\)/g, '')
           .replace(/\[[^\]]*\]/g, '')
@@ -690,9 +701,10 @@
         utterance.lang = 'en-US';
         utterance.rate = selectedRate;
 
+        // 雙語音對話音調與語音庫切換
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
-          utterance.pitch = 0.65;
+          utterance.pitch = 0.55;
         } else {
           if (femaleVoice) utterance.voice = femaleVoice;
           utterance.pitch = 1.35;
