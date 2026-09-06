@@ -617,6 +617,7 @@
       document.getElementById('part-badge').className = `badge ${q.section === 'listening' ? 'badge-l' : 'badge-r'}`;
 
       const passageBox = document.getElementById('passage-box');
+      // 閱讀題顯示閱讀文章；聽力題隱藏文章，靠聽音檔作答
       if (q.passage && q.section !== 'listening') {
         passageBox.style.display = 'block';
         passageBox.innerHTML = formatText(q.passage);
@@ -628,8 +629,9 @@
       const isListening = (q.section === 'listening');
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
+      // Part 2 畫面上不顯示問題題目（真正多益考法）；Part 3/4 顯示針對音檔問的問題
       if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "";
+        document.getElementById('question-text').innerText = "🎧 請點擊上方按鈕聆聽題目與選項。";
       } else {
         document.getElementById('question-text').innerHTML = formatText(q.question);
       }
@@ -655,10 +657,10 @@
       if (!currentQuestion) return;
       window.speechSynthesis.cancel();
 
-      // 多層次防呆：音檔取材順序 audioScript -> script -> passage -> question -> options
+      // 多層次防呆音檔取材：audioScript -> passage -> script -> question -> options
       let rawScript = isPart2(currentQuestion) 
         ? currentQuestion.question 
-        : (currentQuestion.audioScript || currentQuestion.script || currentQuestion.passage || currentQuestion.question);
+        : (currentQuestion.audioScript || currentQuestion.passage || currentQuestion.script || currentQuestion.question);
 
       if (!rawScript || rawScript.trim() === '') {
         rawScript = `${currentQuestion.question || ''}\n${(currentQuestion.options || []).join('\n')}`;
@@ -680,7 +682,6 @@
 
         const originalLine = lines[currentLineIndex++];
         
-        // 精準判斷男聲或女聲，若無顯式標示則依據行數交替
         const isExplicitMan = /(^|\s|\()(man|male|speaker\s*1)(\b|[:：\)])/i.test(originalLine);
         const isExplicitWoman = /(^|\s|\()(woman|female|speaker\s*2)(\b|[:：\)])/i.test(originalLine);
         
@@ -690,11 +691,10 @@
         } else if (isExplicitWoman) {
           isMan = false;
         } else {
-          isMan = (currentLineIndex % 2 === 1); // 無角色標記時，奇數行由男聲發音，偶數行由女聲發音
+          isMan = (currentLineIndex % 2 === 1);
         }
 
-        // 精準清洗角色前綴 (例如 Woman:, Man:, (W):, M:)
-        // 嚴格規定：只有當 W/M/Woman/Man 後面接續冒號 (:) 或連字號 (-) 時才當作角色標籤移除
+        // 精準清洗角色標籤：只有接續冒號 (:) 或連字號 (-) 時才抽離，不誤傷 Would / When
         let cleanText = originalLine
           .replace(/^\s*\(?\s*(woman|man|female|male|speaker\s*\d+)\s*\)?\s*[:：.-]\s*/i, '')
           .replace(/^\s*\(?\s*[wm]\s*\)?\s*[:：.-]\s*/i, '')
@@ -711,13 +711,12 @@
         utterance.lang = 'en-US';
         utterance.rate = selectedRate;
 
-        // 雙聲音交替與音調設定
         if (isMan) {
           if (maleVoice) utterance.voice = maleVoice;
           utterance.pitch = 0.7;
         } else {
           if (femaleVoice) utterance.voice = femaleVoice;
-          utterance.pitch = 1.3;
+          utterance.pitch = 1.35;
         }
 
         utterance.onend = speakNextLine;
@@ -773,7 +772,7 @@
       const analysisBox = document.getElementById('analysis-box');
       analysisBox.style.display = 'block';
 
-      let scriptContent = currentQuestion.audioScript || currentQuestion.script || (currentQuestion.section === 'listening' ? currentQuestion.passage : null);
+      let scriptContent = currentQuestion.audioScript || currentQuestion.script || currentQuestion.passage || (currentQuestion.section === 'listening' ? currentQuestion.question : null);
 
       let transcriptHtml = '';
       if (currentQuestion.section === 'listening' && scriptContent) {
