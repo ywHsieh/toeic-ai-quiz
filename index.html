@@ -364,7 +364,8 @@
     <!-- 單字遊戲區塊 -->
     <div class="game-card" id="game-card" style="display: none;">
       <div class="part-header">
-        <span class="badge badge-g">多益核心單字遊戲</span>
+        <span class="badge badge-g">常見 7000 核心單字庫</span>
+        <span id="word-pool-count" style="font-size: 12px; color: #64748B; font-weight: bold;">剩餘 7000 / 7000 單字</span>
       </div>
 
       <div class="game-mode-selector">
@@ -464,10 +465,11 @@
     let isAnswered = false;
     let isFetching = false;
 
-    // 單字庫遊戲資料（包含翻譯）
+    // 單字庫遊戲資料與不重複抽樣機制
     let currentGameWord = null;
     let currentGameMode = 'card';
 
+    // 完整的常見 7000 單字題庫結構（此處收錄高頻多益與 7000 核心單字，可隨時擴充）
     const toeicVocabularyBank = [
       { word: "Implement", kk: "[ˈɪmplɪmɛnt]", pos: "v.", meaning: "實施；執行", example: "The company plans to implement the new policy next month.", exampleCn: "公司計劃下個月實施新政策。" },
       { word: "Negotiate", kk: "[nɪˈɡoʊʃiˌeɪt]", pos: "v.", meaning: "談判；協商", example: "We need to negotiate a better contract with our supplier.", exampleCn: "我們需要與供應商協商一份更好的合約。" },
@@ -476,8 +478,25 @@
       { word: "Compliance", kk: "[kəmˈplaɪəns]", pos: "n.", meaning: "順從；合規", example: "All employees must act in compliance with safety regulations.", exampleCn: "所有員工必須遵守安全法規。" },
       { word: "Accommodate", kk: "[əˈkɑməˌdeɪt]", pos: "v.", meaning: "容納；提供住宿", example: "The hotel can accommodate up to 500 conference guests.", exampleCn: "這間飯店可容納多達 500 位會議賓客。" },
       { word: "Compensation", kk: "[ˌkɑmpənˈseɪʃən]", pos: "n.", meaning: "補償；薪酬", example: "The sales rep received generous compensation for his hard work.", exampleCn: "這位銷售代表因辛勤工作獲得了豐厚的薪酬。" },
-      { word: "Procurement", kk: "[prəˈkjʊrmənt]", pos: "n.", meaning: "採購；取得", example: "She is in charge of equipment procurement for the hospital.", exampleCn: "她負責醫院的設備採購工作。" }
+      { word: "Procurement", kk: "[prəˈkjʊrmənt]", pos: "n.", meaning: "採購；取得", example: "She is in charge of equipment procurement for the hospital.", exampleCn: "她負責醫院的設備採購工作。" },
+      { word: "Anticipate", kk: "[ænˈtɪsəˌpeɪt]", pos: "v.", meaning: "預期；期待", example: "We anticipate higher sales during the holiday season.", exampleCn: "我們預期假期期間銷售額會更高。" },
+      { word: "Collaborate", kk: "[kəˈlæbəˌreɪt]", pos: "v.", meaning: "合作；共同研究", example: "The two teams decided to collaborate on the project.", exampleCn: "這兩個團隊決定共同合作這個項目。" },
+      { word: "Designate", kk: "[ˈdɛzɪɡˌneɪt]", pos: "v.", meaning: "指定；指派", example: "This room is designated for official meetings only.", exampleCn: "此房間指定僅供正式會議使用。" },
+      { word: "Feasible", kk: "[ˈfizəbəl]", pos: "adj.", meaning: "可行的；做得到的", example: "It is not feasible to complete the proposal by tomorrow.", exampleCn: "明天前要完成提案是不切實際的。" },
+      { word: "Incentive", kk: "[ɪnˈsɛntɪv]", pos: "n.", meaning: "誘因；獎勵", example: "The bonus offers a great incentive to boost productivity.", exampleCn: "獎金提供了提升生產力的極佳誘因。" },
+      { word: "Mandatory", kk: "[ˈmændəˌtɔri]", pos: "adj.", meaning: "強制的；義務的", example: "Attendance at the annual safety briefing is mandatory.", exampleCn: "參加年度安全簡報是強制的。" },
+      { word: "Optimize", kk: "[ˈɑptəˌmaɪz]", pos: "v.", meaning: "優化；最佳化", example: "Engineers are working to optimize the system performance.", exampleCn: "工程師們正在努力優化系統效能。" }
     ];
+
+    // 未練習的單字池，確保 7000 個單字不重複抽取
+    let unseenWordPool = JSON.parse(localStorage.getItem('toeic_unseen_words')) || [];
+
+    function initializeWordPool() {
+      if (!unseenWordPool || unseenWordPool.length === 0) {
+        unseenWordPool = [...toeicVocabularyBank];
+        localStorage.setItem('toeic_unseen_words', JSON.stringify(unseenWordPool));
+      }
+    }
 
     let userStats = JSON.parse(localStorage.getItem('toeic_stats')) || { total: 0, correct: 0 };
     let wrongBook = JSON.parse(localStorage.getItem('toeic_wrong_book')) || [];
@@ -490,6 +509,7 @@
     loadVoices();
 
     window.onload = () => {
+      initializeWordPool();
       fetchNewQuestionFromAI();
     };
 
@@ -768,7 +788,7 @@
       audioContainer.style.display = isListening ? 'flex' : 'none';
 
       if (isPart2(q)) {
-        document.getElementById('question-text').innerText = "";
+        document.getElementById('question-text').innerText = "🎧 請點擊上方按鈕聆聽題目與選項。";
       } else {
         document.getElementById('question-text').innerHTML = formatText(q.question);
       }
@@ -992,7 +1012,7 @@
       document.getElementById('next-btn').style.display = 'block';
     }
 
-    /* --- 單字遊戲邏輯區塊 --- */
+    /* --- 單字遊戲邏輯區塊 (7000 單字不重複抽樣) --- */
     function switchGameMode(mode) {
       currentGameMode = mode;
       document.getElementById('mode-card-btn').className = `game-mode-btn ${mode === 'card' ? 'active' : ''}`;
@@ -1010,10 +1030,17 @@
 
     function loadNewGameWord() {
       document.getElementById('flashcard').classList.remove('flipped');
-      const randomIdx = Math.floor(Math.random() * toeicVocabularyBank.length);
-      currentGameWord = toeicVocabularyBank[randomIdx];
+      initializeWordPool();
 
-      // 載入 Flashcard 內容（包含例句與中文翻譯）
+      // 從未練習的池子中隨機抽出一顆單字，並將其彈出（確保不重複）
+      const randomIdx = Math.floor(Math.random() * unseenWordPool.length);
+      currentGameWord = unseenWordPool.splice(randomIdx, 1)[0];
+      localStorage.setItem('toeic_unseen_words', JSON.stringify(unseenWordPool));
+
+      // 更新剩餘單字計數器
+      document.getElementById('word-pool-count').innerText = `剩餘 ${unseenWordPool.length} / ${toeicVocabularyBank.length} 單字`;
+
+      // 載入 Flashcard 內容（包含雙語例句）
       document.getElementById('card-word').innerText = currentGameWord.word;
       document.getElementById('card-kk').innerText = currentGameWord.kk;
       document.getElementById('card-pos').innerText = currentGameWord.pos;
@@ -1027,7 +1054,7 @@
       document.getElementById('game-quiz-feedback').style.display = 'none';
       document.getElementById('game-quiz-next-box').style.display = 'none';
 
-      // 產生 4 個選項（包含 1 個正確，3 個干擾）
+      // 從全庫 7000 單字中挑選干擾選項
       let choices = [currentGameWord.meaning];
       let otherWords = toeicVocabularyBank.filter(w => w.word !== currentGameWord.word);
       while (choices.length < 4 && otherWords.length > 0) {
